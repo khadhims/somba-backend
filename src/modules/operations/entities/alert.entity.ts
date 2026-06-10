@@ -4,7 +4,6 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
-  OneToOne,
 } from 'typeorm';
 import { Event } from './event.entity';
 import { Camera } from '../../infrastructure/entities/camera.entity';
@@ -14,12 +13,12 @@ export class Alert {
   @PrimaryGeneratedColumn('uuid')
   alert_id: string;
 
-  @Column()
-  event_id: string;
+  @Column({ nullable: true })
+  recording_event_id: string;
 
-  @OneToOne(() => Event, (event) => event.alert)
-  @JoinColumn({ name: 'event_id' })
-  event: Event;
+  @ManyToOne(() => Event, { nullable: true })
+  @JoinColumn({ name: 'recording_event_id' })
+  recording_event: Event;
 
   @Column()
   camera_uid: string;
@@ -31,8 +30,11 @@ export class Alert {
   @Column()
   violation_name: string;
 
+  @Column({ default: 'high' })
+  severity: string;
+
   @Column({ default: 'notResolved' })
-  status: string; // notResolved | resolved | falseAlarm
+  status: string;
 
   @Column({ nullable: true })
   image_url: string;
@@ -40,6 +42,12 @@ export class Alert {
   @Column({ nullable: true })
   comment: string;
 
+  @Column({ type: 'json', nullable: true })
+  bbox: number[];
+
   @Column({ default: 0 })
   total_detections: number;
+
+  @Column({ type: 'timestamptz' })
+  detected_at: Date;
 }

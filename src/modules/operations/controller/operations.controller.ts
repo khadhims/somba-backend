@@ -24,7 +24,7 @@ export class OperationsController {
   @Post('events')
   @ApiOperation({ summary: 'Create event' })
   createEvent(@Body() data: CreateEventDto) {
-    return this.operationsService.createEvent(data);
+    return this.operationsService.createRecordingEvent(data);
   }
 
   @Get('sites/:siteUid/events')

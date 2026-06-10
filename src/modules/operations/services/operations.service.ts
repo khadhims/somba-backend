@@ -15,11 +15,15 @@ export class OperationsService {
     private alertRepository: Repository<Alert>,
   ) {}
 
-  // Events
-  async createEvent(data: CreateEventDto): Promise<Event> {
+  async createRecordingEvent(data: CreateEventDto): Promise<Event> {
     const event = this.eventRepository.create({
-      ...data,
+      site_uid: data.site_uid,
+      camera_uid: data.camera_uid,
+      activity_type: data.activity_type ?? 'activity',
       event_start: new Date(data.event_start),
+      event_end: data.event_end ? new Date(data.event_end) : undefined,
+      duration_minutes: data.duration_minutes,
+      recording_url: data.recording_url,
     });
     return this.eventRepository.save(event);
   }
@@ -27,7 +31,8 @@ export class OperationsService {
   async findEventsBySite(siteUid: string): Promise<Event[]> {
     return this.eventRepository.find({
       where: { site_uid: siteUid },
-      relations: { camera: true, alert: true },
+      relations: { camera: true },
+      order: { event_start: 'DESC' },
     });
   }
 
@@ -44,22 +49,26 @@ export class OperationsService {
 
     return events.map((event) => ({
       activity_uid: event.event_id,
-      activity_name: event.event_name,
+      activity_name: event.activity_type,
       last_activity_timestamp: event.event_start,
       currently_active: !event.event_end,
     }));
   }
 
-  // Alerts
   async createAlert(data: CreateAlertDto): Promise<Alert> {
-    const alert = this.alertRepository.create(data);
+    const alert = this.alertRepository.create({
+      ...data,
+      detected_at: new Date(data.detected_at),
+      severity: data.severity ?? 'high',
+    });
     return this.alertRepository.save(alert);
   }
 
   async findAlertsBySite(siteUid: string): Promise<Alert[]> {
     return this.alertRepository.find({
       where: { camera: { site_uid: siteUid } },
-      relations: { event: true, camera: true },
+      relations: { recording_event: true, camera: true },
+      order: { detected_at: 'DESC' },
     });
   }
 
@@ -88,16 +97,16 @@ export class OperationsService {
     };
   }
 
-  async updateAlertByEventId(
-    eventId: string,
+  async updateAlertById(
+    alertId: string,
     status: string,
     comment?: string,
   ): Promise<Alert> {
     const alert = await this.alertRepository.findOne({
-      where: { event_id: eventId },
+      where: { alert_id: alertId },
     });
     if (!alert) {
-      throw new NotFoundException(`Alert for event ${eventId} not found`);
+      throw new NotFoundException(`Alert ${alertId} not found`);
     }
     alert.status = status;
     if (comment !== undefined) {
@@ -106,11 +115,11 @@ export class OperationsService {
     return this.alertRepository.save(alert);
   }
 
-  async updateAlertStatus(
+  async updateAlertByEventId(
     alertId: string,
     status: string,
     comment?: string,
   ): Promise<Alert | null> {
-    return this.updateAlertByEventId(alertId, status, comment);
+    return this.updateAlertById(alertId, status, comment);
   }
 }

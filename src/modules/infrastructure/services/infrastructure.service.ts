@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { Site } from '../entities/site.entity';
 import { Camera } from '../entities/camera.entity';
@@ -7,6 +9,8 @@ import { CreateSiteDto } from '../dtos/create-site.dto';
 import { CreateCameraDto } from '../dtos/create-camera.dto';
 import { UpdateSiteDto } from '../dtos/update-site.dto';
 import { UpdateCameraDto } from '../dtos/update-camera.dto';
+import { hashApiKey } from '../../../common/utils/api-key.util';
+import { SiteWithOneTimeApiKey } from '../entities/site.entity';
 
 @Injectable()
 export class InfrastructureService {
@@ -15,16 +19,45 @@ export class InfrastructureService {
     private siteRepository: Repository<Site>,
     @InjectRepository(Camera)
     private cameraRepository: Repository<Camera>,
+    private moduleRef: ModuleRef,
   ) {}
+
+  private notifySiteConfigUpdated(siteUid: string | null | undefined) {
+    if (!siteUid) {
+      return;
+    }
+    try {
+      const { EdgeService } = require('../../edge/services/edge.service') as {
+        EdgeService: new (...args: unknown[]) => {
+          notifyConfigUpdated: (siteUid: string) => void;
+        };
+      };
+      const edgeService = this.moduleRef.get(EdgeService, { strict: false });
+      edgeService.notifyConfigUpdated(siteUid);
+    } catch {
+      // EdgeModule may not be initialized yet during bootstrap
+    }
+  }
 
   // Sites
   async findAllSites(): Promise<Site[]> {
     return this.siteRepository.find();
   }
 
-  async createSite(data: CreateSiteDto): Promise<Site> {
-    const site = this.siteRepository.create(data);
-    return this.siteRepository.save(site);
+  async createSite(data: CreateSiteDto): Promise<SiteWithOneTimeApiKey> {
+    const plainApiKey = randomUUID();
+    const site = this.siteRepository.create({
+      ...data,
+      api_key_hash: await hashApiKey(plainApiKey),
+      status: 'offline',
+      timezone:
+        data.timezone ??
+        Intl.DateTimeFormat().resolvedOptions().timeZone ??
+        'UTC',
+      is_active: data.is_active ?? true,
+    });
+    const saved = await this.siteRepository.save(site);
+    return Object.assign(saved, { api_key: plainApiKey });
   }
 
   async findSitesByTeam(teamUid: string): Promise<Site[]> {
@@ -42,6 +75,18 @@ export class InfrastructureService {
     return this.siteRepository.save(site);
   }
 
+  async regenerateSiteApiKey(uid: string): Promise<SiteWithOneTimeApiKey> {
+    const site = await this.findSiteByUid(uid);
+    if (!site) {
+      throw new NotFoundException(`Site with UID ${uid} not found`);
+    }
+    const plainApiKey = randomUUID();
+    site.api_key_hash = await hashApiKey(plainApiKey);
+    site.status = 'offline';
+    const saved = await this.siteRepository.save(site);
+    return Object.assign(saved, { api_key: plainApiKey });
+  }
+
   async removeSite(uid: string): Promise<void> {
     const result = await this.siteRepository.delete(uid);
     if (result.affected === 0)
@@ -55,9 +100,12 @@ export class InfrastructureService {
       room_id?: number;
     };
 
+    const masterRtsp = public_endpoint_url ?? ipAddress;
+
     return {
       ...cameraData,
-      ipAddress: ipAddress ?? public_endpoint_url,
+      master_rtsp_url: masterRtsp,
+      ipAddress: masterRtsp,
       type: type ?? cam_type,
     };
   }
@@ -66,7 +114,9 @@ export class InfrastructureService {
     const camera = this.cameraRepository.create(
       this.normalizeCameraPayload(data),
     );
-    return this.cameraRepository.save(camera);
+    const saved = await this.cameraRepository.save(camera);
+    this.notifySiteConfigUpdated(saved.site_uid);
+    return saved;
   }
 
   async findCamerasBySite(siteUid: string): Promise<Camera[]> {
@@ -100,12 +150,21 @@ export class InfrastructureService {
     if (!camera)
       throw new NotFoundException(`Camera with UID ${uid} not found`);
     Object.assign(camera, this.normalizeCameraPayload(data));
-    return this.cameraRepository.save(camera);
+    const saved = await this.cameraRepository.save(camera);
+    this.notifySiteConfigUpdated(saved.site_uid);
+    return saved;
   }
 
   async removeCamera(uid: string): Promise<void> {
+    const camera = await this.findCameraByUid(uid);
+    if (!camera)
+      throw new NotFoundException(`Camera with UID ${uid} not found`);
+
+    const siteUid = camera.site_uid;
     const result = await this.cameraRepository.delete(uid);
     if (result.affected === 0)
       throw new NotFoundException(`Camera with UID ${uid} not found`);
+
+    this.notifySiteConfigUpdated(siteUid);
   }
 }

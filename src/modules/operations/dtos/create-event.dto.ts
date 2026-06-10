@@ -3,8 +3,9 @@ import {
   IsString,
   IsUUID,
   IsOptional,
-  IsEnum,
   IsDateString,
+  IsNumber,
+  IsUrl,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -19,22 +20,28 @@ export class CreateEventDto {
   @IsNotEmpty()
   camera_uid: string;
 
-  @ApiProperty({ example: 'Motion Detected' })
+  @ApiProperty({ example: 'person', required: false })
   @IsString()
-  @IsNotEmpty()
-  event_name: string;
-
-  @ApiProperty({
-    example: 'low',
-    enum: ['low', 'medium', 'high', 'critical'],
-    required: false,
-  })
-  @IsEnum(['low', 'medium', 'high', 'critical'])
   @IsOptional()
-  severity?: string;
+  activity_type?: string;
 
   @ApiProperty({ example: '2026-06-09T10:00:00Z' })
   @IsDateString()
   @IsNotEmpty()
   event_start: string;
+
+  @ApiProperty({ example: '2026-06-09T10:02:15Z', required: false })
+  @IsDateString()
+  @IsOptional()
+  event_end?: string;
+
+  @ApiProperty({ example: 2.25, required: false })
+  @IsNumber()
+  @IsOptional()
+  duration_minutes?: number;
+
+  @ApiProperty({ example: 'https://storage/recordings/cam.mp4', required: false })
+  @IsString()
+  @IsOptional()
+  recording_url?: string;
 }

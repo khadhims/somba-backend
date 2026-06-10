@@ -19,6 +19,12 @@ export class Account {
   @Column()
   name: string;
 
+  @Column({ nullable: true })
+  email: string;
+
+  @Column({ nullable: true })
+  phone: string;
+
   @Column()
   organization_uid: string;
 

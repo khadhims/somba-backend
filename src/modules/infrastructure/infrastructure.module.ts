@@ -7,7 +7,7 @@ import { InfrastructureController } from './controller/infrastructure.controller
 
 @Module({
   imports: [TypeOrmModule.forFeature([Site, Camera])],
-  exports: [TypeOrmModule],
+  exports: [TypeOrmModule, InfrastructureService],
   providers: [InfrastructureService],
   controllers: [InfrastructureController],
 })

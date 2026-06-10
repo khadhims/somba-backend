@@ -29,6 +29,9 @@ export class Camera {
   room: string;
 
   @Column({ nullable: true })
+  master_rtsp_url: string;
+
+  @Column({ nullable: true })
   ipAddress: string;
 
   @Column({ nullable: true })

@@ -6,10 +6,19 @@ import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { GlobalResponseInterceptor } from './common/interceptors/global-response.interceptor';
+import * as express from 'express';
+import { join } from 'path';
+import * as fs from 'fs';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+
+  // Ensure uploads directory exists
+  const uploadsDir = join(__dirname, '..', 'uploads/alerts');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
 
   // Global Pipes
   app.useGlobalPipes(
@@ -31,6 +40,9 @@ async function bootstrap() {
     origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
     credentials: true,
   });
+
+  // Serve static files from uploads directory
+  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
   // Swagger Documentation
   const config = new DocumentBuilder()

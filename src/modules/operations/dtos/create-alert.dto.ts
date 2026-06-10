@@ -4,16 +4,12 @@ import {
   IsUUID,
   IsOptional,
   IsInt,
-  IsUrl,
+  IsDateString,
+  IsArray,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateAlertDto {
-  @ApiProperty({ example: 'event-uuid' })
-  @IsUUID()
-  @IsNotEmpty()
-  event_id: string;
-
   @ApiProperty({ example: 'camera-uuid' })
   @IsUUID()
   @IsNotEmpty()
@@ -23,6 +19,16 @@ export class CreateAlertDto {
   @IsString()
   @IsNotEmpty()
   violation_name: string;
+
+  @ApiProperty({ example: 'high', required: false })
+  @IsString()
+  @IsOptional()
+  severity?: string;
+
+  @ApiProperty({ example: '2026-06-09T10:00:00Z' })
+  @IsDateString()
+  @IsNotEmpty()
+  detected_at: string;
 
   @ApiProperty({
     example: 'notResolved',
@@ -34,7 +40,7 @@ export class CreateAlertDto {
   status?: string;
 
   @ApiProperty({ example: 'http://storage.com/image.jpg', required: false })
-  @IsUrl()
+  @IsString()
   @IsOptional()
   image_url?: string;
 
@@ -42,4 +48,14 @@ export class CreateAlertDto {
   @IsInt()
   @IsOptional()
   total_detections?: number;
+
+  @ApiProperty({ example: [100, 200, 300, 400], required: false })
+  @IsArray()
+  @IsOptional()
+  bbox?: number[];
+
+  @ApiProperty({ example: 'recording-event-uuid', required: false })
+  @IsUUID()
+  @IsOptional()
+  recording_event_id?: string;
 }

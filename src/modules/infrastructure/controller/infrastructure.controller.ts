@@ -71,6 +71,12 @@ export class InfrastructureController {
     return this.infraService.removeSite(uid);
   }
 
+  @Post('sites/:uid/regenerate-key')
+  @ApiOperation({ summary: 'Regenerate mini-PC API key for site' })
+  regenerateSiteApiKey(@Param('uid') uid: string) {
+    return this.infraService.regenerateSiteApiKey(uid);
+  }
+
   @Get('sites/:siteUid/cameras')
   @ApiOperation({ summary: 'List cameras by site' })
   findCamerasBySite(@Param('siteUid') siteUid: string) {

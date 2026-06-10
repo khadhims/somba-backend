@@ -1,8 +1,10 @@
+import { Exclude } from 'class-transformer';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   ManyToOne,
   OneToMany,
   JoinColumn,
@@ -23,22 +25,17 @@ export class Site {
   description: string;
 
   @Column({ nullable: true })
-  code: string;
-
-  @Column({ nullable: true })
   address: string;
 
-  @Column({ type: 'float', nullable: true })
-  latitude: number;
+  @Exclude()
+  @Column({ unique: true })
+  api_key_hash: string;
 
-  @Column({ type: 'float', nullable: true })
-  longitude: number;
+  @Column({ default: 'offline' })
+  status: string;
 
-  @Column({ nullable: true })
-  contact_person: string;
-
-  @Column({ nullable: true })
-  contact_phone: string;
+  @Column({ type: 'timestamptz', nullable: true })
+  last_seen_at: Date | null;
 
   @Column({ default: true })
   is_active: boolean;
@@ -61,4 +58,9 @@ export class Site {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
 }
+
+export type SiteWithOneTimeApiKey = Site & { api_key: string };

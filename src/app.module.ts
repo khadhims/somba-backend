@@ -9,6 +9,7 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
 import { OperationsModule } from './modules/operations/operations.module';
+import { EdgeModule } from './modules/edge/edge.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { OperationsModule } from './modules/operations/operations.module';
     AuthModule,
     InfrastructureModule,
     OperationsModule,
+    EdgeModule, // after OperationsModule to satisfy module dependency order
   ],
   controllers: [AppController],
   providers: [AppService],
