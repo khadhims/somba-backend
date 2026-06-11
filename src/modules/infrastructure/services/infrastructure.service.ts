@@ -22,7 +22,7 @@ export class InfrastructureService {
     private moduleRef: ModuleRef,
   ) {}
 
-  private notifySiteConfigUpdated(siteUid: string | null | undefined) {
+  notifySiteConfigUpdated(siteUid: string | null | undefined) {
     if (!siteUid) {
       return;
     }
@@ -95,17 +95,13 @@ export class InfrastructureService {
 
   // Cameras
   private normalizeCameraPayload(data: CreateCameraDto | UpdateCameraDto) {
-    const { public_endpoint_url, cam_type, ipAddress, type, ...rest } = data;
+    const { cam_type, type, ...rest } = data;
     const { room_id: _legacyRoomId, ...cameraData } = rest as typeof rest & {
       room_id?: number;
     };
 
-    const masterRtsp = public_endpoint_url ?? ipAddress;
-
     return {
       ...cameraData,
-      master_rtsp_url: masterRtsp,
-      ipAddress: masterRtsp,
       type: type ?? cam_type,
     };
   }

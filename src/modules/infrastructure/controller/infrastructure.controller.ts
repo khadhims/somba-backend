@@ -7,9 +7,14 @@ import {
   UseGuards,
   Patch,
   Delete,
+  Put,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InfrastructureService } from '../services/infrastructure.service';
+import { ActivityService } from '../services/activity.service';
+import { CreateActivityDto } from '../dtos/create-activity.dto';
+import { UpdateActivityDto } from '../dtos/update-activity.dto';
+import { AssignCameraActivitiesDto } from '../dtos/assign-camera-activities.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CreateSiteDto } from '../dtos/create-site.dto';
 import { CreateCameraDto } from '../dtos/create-camera.dto';
@@ -21,7 +26,10 @@ import { UpdateCameraDto } from '../dtos/update-camera.dto';
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class InfrastructureController {
-  constructor(private infraService: InfrastructureService) {}
+  constructor(
+    private infraService: InfrastructureService,
+    private activityService: ActivityService,
+  ) {}
 
   @Get('sites')
   @ApiOperation({ summary: 'List all sites' })
@@ -126,5 +134,70 @@ export class InfrastructureController {
       status: 'success',
       message: `Started recording for camera ${uid}`,
     };
+  }
+
+  @Get('sites/:siteUid/activity-definitions')
+  @ApiOperation({ summary: 'List activity definitions by site' })
+  findActivityDefinitionsBySite(@Param('siteUid') siteUid: string) {
+    return this.activityService.findBySite(siteUid);
+  }
+
+  @Post('sites/:siteUid/activity-definitions')
+  @ApiOperation({ summary: 'Create activity definition under site' })
+  async createActivityDefinition(
+    @Param('siteUid') siteUid: string,
+    @Body() data: CreateActivityDto,
+  ) {
+    const activity = await this.activityService.create(siteUid, data);
+    this.infraService.notifySiteConfigUpdated(siteUid);
+    return activity;
+  }
+
+  @Patch('sites/:siteUid/activity-definitions/:activityUid')
+  @ApiOperation({ summary: 'Update activity definition' })
+  async updateActivityDefinition(
+    @Param('siteUid') siteUid: string,
+    @Param('activityUid') activityUid: string,
+    @Body() data: UpdateActivityDto,
+  ) {
+    const activity = await this.activityService.update(siteUid, activityUid, data);
+    this.infraService.notifySiteConfigUpdated(siteUid);
+    return activity;
+  }
+
+  @Delete('sites/:siteUid/activity-definitions/:activityUid')
+  @ApiOperation({ summary: 'Delete activity definition' })
+  async removeActivityDefinition(
+    @Param('siteUid') siteUid: string,
+    @Param('activityUid') activityUid: string,
+  ) {
+    await this.activityService.remove(siteUid, activityUid);
+    this.infraService.notifySiteConfigUpdated(siteUid);
+    return { status: 'success' };
+  }
+
+  @Get('sites/:siteUid/cameras/:cameraUid/activity-definitions')
+  @ApiOperation({ summary: 'List activity definitions assigned to camera' })
+  findCameraActivityDefinitions(
+    @Param('siteUid') siteUid: string,
+    @Param('cameraUid') cameraUid: string,
+  ) {
+    return this.activityService.listAssignmentsForCamera(siteUid, cameraUid);
+  }
+
+  @Put('sites/:siteUid/cameras/:cameraUid/activity-definitions')
+  @ApiOperation({ summary: 'Replace activity definitions assigned to camera' })
+  async assignCameraActivityDefinitions(
+    @Param('siteUid') siteUid: string,
+    @Param('cameraUid') cameraUid: string,
+    @Body() data: AssignCameraActivitiesDto,
+  ) {
+    const activities = await this.activityService.assignActivitiesToCamera(
+      siteUid,
+      cameraUid,
+      data.activity_uids,
+    );
+    this.infraService.notifySiteConfigUpdated(siteUid);
+    return activities;
   }
 }

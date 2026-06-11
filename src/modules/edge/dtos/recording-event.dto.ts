@@ -14,6 +14,10 @@ export class RecordingEventDto {
   @IsUUID()
   camera_uuid: string;
 
+  @IsUUID()
+  @IsOptional()
+  activity_uid?: string;
+
   @IsString()
   @IsNotEmpty()
   activity_type: string;

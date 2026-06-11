@@ -19,6 +19,7 @@ export class OperationsService {
     const event = this.eventRepository.create({
       site_uid: data.site_uid,
       camera_uid: data.camera_uid,
+      activity_uid: data.activity_uid,
       activity_type: data.activity_type ?? 'activity',
       event_start: new Date(data.event_start),
       event_end: data.event_end ? new Date(data.event_end) : undefined,
@@ -31,7 +32,7 @@ export class OperationsService {
   async findEventsBySite(siteUid: string): Promise<Event[]> {
     return this.eventRepository.find({
       where: { site_uid: siteUid },
-      relations: { camera: true },
+      relations: { camera: true, activity: true },
       order: { event_start: 'DESC' },
     });
   }

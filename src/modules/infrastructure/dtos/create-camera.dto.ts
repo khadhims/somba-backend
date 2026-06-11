@@ -19,10 +19,21 @@ export class CreateCameraDto {
   @IsOptional()
   model?: string;
 
-  @ApiProperty({ example: '192.168.1.10', required: false })
+  @ApiProperty({
+    example: 'rtsp://admin:pass@192.168.1.64:554/cam/realmonitor?channel=1&subtype=0',
+    description: 'RTSP URL referensi (dikonfigurasi manual di go2rtc.yaml edge)',
+  })
   @IsString()
-  @IsOptional()
-  public_endpoint_url?: string;
+  @IsNotEmpty()
+  rtsp_url: string;
+
+  @ApiProperty({
+    example: 'http://103.53.184.186:1984/api/stream.m3u8?src=camera-uuid_main',
+    description: 'URL HLS (.m3u8) dari go2rtc — dipakai Web UI untuk live view',
+  })
+  @IsString()
+  @IsNotEmpty()
+  stream_url: string;
 
   @ApiProperty({ example: 'Dahua', required: false })
   @IsString()
@@ -72,11 +83,6 @@ export class CreateCameraDto {
   @IsString()
   @IsOptional()
   room?: string;
-
-  @ApiProperty({ example: '192.168.1.10', required: false })
-  @IsString()
-  @IsOptional()
-  ipAddress?: string;
 
   @ApiProperty({ example: 'Bullet', required: false })
   @IsString()

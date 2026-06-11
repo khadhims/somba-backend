@@ -2,13 +2,16 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Site } from './entities/site.entity';
 import { Camera } from './entities/camera.entity';
+import { Activity } from './entities/activity.entity';
+import { CameraActivity } from './entities/camera-activity.entity';
 import { InfrastructureService } from './services/infrastructure.service';
+import { ActivityService } from './services/activity.service';
 import { InfrastructureController } from './controller/infrastructure.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Site, Camera])],
-  exports: [TypeOrmModule, InfrastructureService],
-  providers: [InfrastructureService],
+  imports: [TypeOrmModule.forFeature([Site, Camera, Activity, CameraActivity])],
+  exports: [TypeOrmModule, InfrastructureService, ActivityService],
+  providers: [InfrastructureService, ActivityService],
   controllers: [InfrastructureController],
 })
 export class InfrastructureModule {}

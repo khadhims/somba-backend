@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { Site } from '../../infrastructure/entities/site.entity';
 import { Camera } from '../../infrastructure/entities/camera.entity';
+import { Activity } from '../../infrastructure/entities/activity.entity';
 
 @Entity('events')
 export class Event {
@@ -26,6 +27,13 @@ export class Event {
   @ManyToOne(() => Camera, (camera) => camera.events)
   @JoinColumn({ name: 'camera_uid' })
   camera: Camera;
+
+  @Column({ nullable: true })
+  activity_uid: string;
+
+  @ManyToOne(() => Activity, { nullable: true })
+  @JoinColumn({ name: 'activity_uid' })
+  activity: Activity;
 
   @Column({ default: 'activity' })
   activity_type: string;

@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Site } from '../../infrastructure/entities/site.entity';
 import { Camera } from '../../infrastructure/entities/camera.entity';
-import { buildEdgeStreamConfig } from '../../../common/utils/rtsp.util';
+import { ActivityService } from '../../infrastructure/services/activity.service';
 import {
   hashApiKey,
   isHashedApiKey,
@@ -23,6 +23,7 @@ export class EdgeService {
     private siteRepository: Repository<Site>,
     @InjectRepository(Camera)
     private cameraRepository: Repository<Camera>,
+    private activityService: ActivityService,
     @Inject(forwardRef(() => EdgeGateway))
     private edgeGateway: EdgeGateway,
   ) {}
@@ -83,25 +84,21 @@ export class EdgeService {
       order: { name: 'ASC' },
     });
 
-    return cameras
-      .filter((camera) => camera.master_rtsp_url || camera.ipAddress)
-      .map((camera) => {
-        const masterRtsp = camera.master_rtsp_url ?? camera.ipAddress ?? '';
-        const recordingConfig =
-          (camera.camera_config?.recording as Record<string, unknown>) ?? {};
+    const payloads = await Promise.all(
+      cameras.map(async (camera) => {
+        const activities = await this.activityService.buildEdgeActivitiesForCamera(
+          camera.uid,
+        );
 
         return {
+          camera_uuid: camera.uid,
           name: camera.name,
-          brand: camera.brand,
-          recording: {
-            enabled: recordingConfig.enabled !== false,
-            post_buffer_sec: Number(recordingConfig.post_buffer_sec ?? 10),
-            max_segment_sec: Number(recordingConfig.max_segment_sec ?? 300),
-            activity_class: String(recordingConfig.activity_class ?? 'person'),
-          },
-          ...buildEdgeStreamConfig(camera.uid, masterRtsp, camera.brand),
+          activities,
         };
-      });
+      }),
+    );
+
+    return payloads.filter((camera) => camera.activities.length > 0);
   }
 
   requireSiteFromApiKey(site: Site | null): Site {

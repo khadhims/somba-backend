@@ -9,6 +9,7 @@ import {
 import { Site } from './site.entity';
 import { Event } from '../../operations/entities/event.entity';
 import { Alert } from '../../operations/entities/alert.entity';
+import { CameraActivity } from './camera-activity.entity';
 
 @Entity('cameras')
 export class Camera {
@@ -28,11 +29,13 @@ export class Camera {
   @Column({ nullable: true })
   room: string;
 
+  /** RTSP source — referensi; dikonfigurasi manual di go2rtc.yaml di edge */
   @Column({ nullable: true })
-  master_rtsp_url: string;
+  rtsp_url: string;
 
+  /** URL HLS (.m3u8) dari go2rtc — dipakai langsung oleh Web UI */
   @Column({ nullable: true })
-  ipAddress: string;
+  stream_url: string;
 
   @Column({ nullable: true })
   brand: string;
@@ -60,6 +63,9 @@ export class Camera {
 
   @Column({ default: 'online' })
   status: string;
+
+  @OneToMany(() => CameraActivity, (assignment) => assignment.camera)
+  activity_assignments: CameraActivity[];
 
   @OneToMany(() => Event, (event) => event.camera)
   events: Event[];

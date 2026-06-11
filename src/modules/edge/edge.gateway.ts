@@ -20,7 +20,6 @@ import { OperationsService } from '../operations/services/operations.service';
 import { InfrastructureService } from '../infrastructure/services/infrastructure.service';
 import { DetectionEventDto } from './dtos/detection-event.dto';
 import { RecordingEventDto } from './dtos/recording-event.dto';
-
 @WebSocketGateway({
   namespace: '/edge',
   cors: {
@@ -143,6 +142,7 @@ export class EdgeGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const event = await this.operationsService.createRecordingEvent({
         site_uid: validation.camera.site_uid,
         camera_uid: validation.camera.uid,
+        activity_uid: payload.activity_uid,
         activity_type: payload.activity_type,
         event_start: payload.event_start,
         event_end: payload.event_end,

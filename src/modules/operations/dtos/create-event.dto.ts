@@ -20,7 +20,12 @@ export class CreateEventDto {
   @IsNotEmpty()
   camera_uid: string;
 
-  @ApiProperty({ example: 'person', required: false })
+  @ApiProperty({ example: 'activity-uuid', required: false })
+  @IsUUID()
+  @IsOptional()
+  activity_uid?: string;
+
+  @ApiProperty({ example: 'memasak', required: false })
   @IsString()
   @IsOptional()
   activity_type?: string;
