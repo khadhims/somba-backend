@@ -45,16 +45,16 @@ export class InfrastructureService {
   }
 
   async createSite(data: CreateSiteDto): Promise<SiteWithOneTimeApiKey> {
-    const plainApiKey = randomUUID();
+    const plainApiKey = data.api_key?.trim() || randomUUID();
     const site = this.siteRepository.create({
       ...data,
       api_key_hash: await hashApiKey(plainApiKey),
-      status: 'offline',
+      status: data.status ?? 'active',
+      connection_status: 'offline',
       timezone:
         data.timezone ??
         Intl.DateTimeFormat().resolvedOptions().timeZone ??
         'UTC',
-      is_active: data.is_active ?? true,
     });
     const saved = await this.siteRepository.save(site);
     return Object.assign(saved, { api_key: plainApiKey });
@@ -82,7 +82,7 @@ export class InfrastructureService {
     }
     const plainApiKey = randomUUID();
     site.api_key_hash = await hashApiKey(plainApiKey);
-    site.status = 'offline';
+    site.connection_status = 'offline';
     const saved = await this.siteRepository.save(site);
     return Object.assign(saved, { api_key: plainApiKey });
   }

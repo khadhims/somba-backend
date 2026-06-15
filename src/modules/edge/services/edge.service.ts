@@ -57,14 +57,14 @@ export class EdgeService {
 
   async markOnline(uid: string): Promise<void> {
     await this.siteRepository.update(uid, {
-      status: 'online',
+      connection_status: 'online',
       last_seen_at: new Date(),
     });
   }
 
   async markOffline(uid: string): Promise<void> {
     await this.siteRepository.update(uid, {
-      status: 'offline',
+      connection_status: 'offline',
     });
   }
 
@@ -93,6 +93,7 @@ export class EdgeService {
         return {
           camera_uuid: camera.uid,
           name: camera.name,
+          rtsp_url: camera.rtsp_url,
           activities,
         };
       }),

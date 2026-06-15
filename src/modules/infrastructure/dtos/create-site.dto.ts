@@ -1,5 +1,4 @@
 import {
-  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -23,10 +22,14 @@ export class CreateSiteDto {
   @IsOptional()
   address?: string;
 
-  @ApiProperty({ example: true, required: false })
-  @IsBoolean()
+  @ApiProperty({
+    example: 'active',
+    required: false,
+    description: 'Site operational status: active | inactive',
+  })
+  @IsString()
   @IsOptional()
-  is_active?: boolean;
+  status?: string;
 
   @ApiProperty({
     example: 'Asia/Jakarta',
@@ -45,4 +48,13 @@ export class CreateSiteDto {
   @IsUUID()
   @IsOptional()
   team_uid?: string;
+
+  @ApiProperty({
+    example: '73216f48-d62a-412b-95ce-d211a4fee00',
+    required: false,
+    description: 'Plain API key for Mini-PC; auto-generated when omitted',
+  })
+  @IsUUID()
+  @IsOptional()
+  api_key?: string;
 }

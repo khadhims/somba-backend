@@ -36,23 +36,33 @@ async function bootstrap() {
 
   // Security & Middleware
   app.use(cookieParser());
+  const corsOrigins = configService
+    .getOrThrow<string>('CORS_ORIGINS')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: corsOrigins,
     credentials: true,
   });
 
   // Serve static files from uploads directory
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
-  // Swagger Documentation
-  const config = new DocumentBuilder()
-    .setTitle('Somba API')
-    .setDescription('The Somba Backend API description')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+  const swaggerEnabled =
+    configService.get<boolean>('SWAGGER_ENABLED') ?? nodeEnv !== 'production';
+
+  if (swaggerEnabled) {
+    const config = new DocumentBuilder()
+      .setTitle('Somba API')
+      .setDescription('The Somba Backend API description')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = configService.getOrThrow<number>('PORT');
   await app.listen(port);

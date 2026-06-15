@@ -1,8 +1,13 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
+import { join } from 'path';
 
 config();
+
+const isCompiled = __filename.endsWith('.js');
+const baseDir = join(__dirname, '..');
+const extension = isCompiled ? 'js' : 'ts';
 
 export default new DataSource({
   type: 'postgres',
@@ -11,7 +16,7 @@ export default new DataSource({
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
-  entities: ['src/**/*.entity.ts'],
-  migrations: ['src/migrations/*.ts'],
-  synchronize: process.env.DB_SYNCHRONIZE === 'false',
+  entities: [`${baseDir}/**/*.entity.${extension}`],
+  migrations: [`${baseDir}/migrations/*.${extension}`],
+  synchronize: false,
 });

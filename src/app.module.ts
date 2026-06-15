@@ -15,33 +15,51 @@ import { EdgeModule } from './modules/edge/edge.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validationOptions: {
+        convert: true,
+      },
       validationSchema: Joi.object({
+        NODE_ENV: Joi.string()
+          .valid('development', 'production', 'test')
+          .default('development'),
         PORT: Joi.number().required(),
         DB_HOST: Joi.string().required(),
         DB_PORT: Joi.number().required(),
         DB_USERNAME: Joi.string().required(),
         DB_PASSWORD: Joi.string().required(),
         DB_DATABASE: Joi.string().required(),
-        DB_AUTOLOAD_ENTITIES: Joi.boolean().required(),
-        DB_SYNCHRONIZE: Joi.boolean().required(),
+        DB_AUTOLOAD_ENTITIES: Joi.boolean().default(true),
+        DB_SYNCHRONIZE: Joi.boolean().default(false),
+        DB_LOGGING: Joi.boolean().default(false),
         JWT_SECRET: Joi.string().required(),
         JWT_EXPIRATION: Joi.string().required(),
+        REFRESH_TOKEN_EXPIRATION: Joi.string().optional(),
+        EDGE_API_KEY: Joi.string().optional(),
+        CORS_ORIGINS: Joi.string().default('http://localhost:5173'),
+        SWAGGER_ENABLED: Joi.boolean().optional(),
       }),
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.getOrThrow<string>('DB_HOST'),
-        port: configService.getOrThrow<number>('DB_PORT'),
-        username: configService.getOrThrow<string>('DB_USERNAME'),
-        password: configService.getOrThrow<string>('DB_PASSWORD'),
-        database: configService.getOrThrow<string>('DB_DATABASE'),
-        autoLoadEntities: configService.getOrThrow<boolean>(
-          'DB_AUTOLOAD_ENTITIES',
-        ),
-        synchronize: configService.getOrThrow<boolean>('DB_SYNCHRONIZE'),
-      }),
+      useFactory: (configService: ConfigService) => {
+        const dbLogging = configService.get<boolean>('DB_LOGGING', false);
+
+        return {
+          type: 'postgres',
+          host: configService.getOrThrow<string>('DB_HOST'),
+          port: configService.getOrThrow<number>('DB_PORT'),
+          username: configService.getOrThrow<string>('DB_USERNAME'),
+          password: configService.getOrThrow<string>('DB_PASSWORD'),
+          database: configService.getOrThrow<string>('DB_DATABASE'),
+          autoLoadEntities: configService.get<boolean>(
+            'DB_AUTOLOAD_ENTITIES',
+            true,
+          ),
+          synchronize: configService.get<boolean>('DB_SYNCHRONIZE', false),
+          logging: dbLogging,
+          ...(dbLogging ? { logger: 'advanced-console' as const } : {}),
+        };
+      },
       inject: [ConfigService],
     }),
 

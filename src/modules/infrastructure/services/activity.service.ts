@@ -42,17 +42,23 @@ export class ActivityService {
   }
 
   async create(siteUid: string, data: CreateActivityDto): Promise<Activity> {
+    const code =
+      data.code?.trim() ||
+      (await this.uniqueCodeForSite(siteUid, this.slugifyName(data.name)));
+
     const existing = await this.activityRepository.findOne({
-      where: { site_uid: siteUid, code: data.code },
+      where: { site_uid: siteUid, code },
     });
     if (existing) {
       throw new BadRequestException(
-        `Activity code "${data.code}" already exists for this site`,
+        `Activity code "${code}" already exists for this site`,
       );
     }
 
     const activity = this.activityRepository.create({
       ...data,
+      code,
+      ai_model: this.normalizeAiModel(data.ai_model),
       site_uid: siteUid,
       min_confidence: data.min_confidence ?? 0.5,
       recording_config: data.recording_config ?? {
@@ -80,6 +86,10 @@ export class ActivityService {
           `Activity code "${data.code}" already exists for this site`,
         );
       }
+    }
+
+    if (data.ai_model !== undefined) {
+      data.ai_model = this.normalizeAiModel(data.ai_model);
     }
 
     Object.assign(activity, data);
@@ -217,6 +227,42 @@ export class ActivityService {
           },
         };
       });
+  }
+
+  private slugifyName(name: string): string {
+    const slug = name
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 64);
+
+    return slug || 'activity';
+  }
+
+  private async uniqueCodeForSite(
+    siteUid: string,
+    base: string,
+  ): Promise<string> {
+    let code = base;
+    let suffix = 2;
+
+    while (
+      await this.activityRepository.findOne({
+        where: { site_uid: siteUid, code },
+      })
+    ) {
+      code = `${base}-${suffix}`;
+      suffix += 1;
+    }
+
+    return code;
+  }
+
+  private normalizeAiModel(value: string): string {
+    return value.trim().replace(/\.pt$/i, '');
   }
 
   private async assertCameraInSite(

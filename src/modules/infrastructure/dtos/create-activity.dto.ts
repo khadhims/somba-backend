@@ -13,10 +13,14 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateActivityDto {
-  @ApiProperty({ example: 'memasak' })
+  @ApiProperty({
+    example: 'memasak',
+    required: false,
+    description: 'Auto-generated from name when omitted',
+  })
   @IsString()
-  @IsNotEmpty()
-  code: string;
+  @IsOptional()
+  code?: string;
 
   @ApiProperty({ example: 'Memasak' })
   @IsString()
@@ -28,7 +32,10 @@ export class CreateActivityDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ example: 'yolov8n.pt' })
+  @ApiProperty({
+    example: 'memasak',
+    description: 'Model filename stem; edge loads models/{ai_model}.pt',
+  })
   @IsString()
   @IsNotEmpty()
   ai_model: string;

@@ -57,18 +57,73 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Deployment
+## Deployment (Production)
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Environment
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Copy `.env.example` to `.env` and set production values:
+
+- `NODE_ENV=production`
+- `DB_SYNCHRONIZE=false` (required — schema changes go through migrations)
+- `CORS_ORIGINS` — comma-separated Web UI origin(s), e.g. `https://app.example.com`
+- `JWT_SECRET` — strong random secret
+- `SWAGGER_ENABLED=false` (Swagger is disabled in production by default)
+
+### Database migrations
+
+Fresh database:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run build
+npm run migration:run:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Development (TypeScript data source):
+
+```bash
+npm run migration:run
+```
+
+Check pending migrations:
+
+```bash
+npm run migration:show:prod
+```
+
+Revert last migration:
+
+```bash
+npm run migration:revert:prod
+```
+
+### Upgrading from older dev schema (NVR / Room tables)
+
+Migration `RemoveLegacyNvrRoom1718000001000` drops legacy `nvrs`, `rooms`, and `room_id` / `nvr_uid` columns on `cameras`, and copies `room` from `camera_config` when needed.
+
+If the database was already created with `DB_SYNCHRONIZE=true` and tables match the current entities, baseline the migration history instead of re-running `InitialSchema`:
+
+```sql
+CREATE TABLE IF NOT EXISTS migrations (
+  id SERIAL PRIMARY KEY,
+  timestamp BIGINT NOT NULL,
+  name VARCHAR NOT NULL
+);
+INSERT INTO migrations (timestamp, name) VALUES
+  (1718000000000, 'InitialSchema1718000000000'),
+  (1718000001000, 'RemoveLegacyNvrRoom1718000001000');
+```
+
+Then run only new migrations going forward.
+
+### Start
+
+```bash
+npm run deploy:prod
+```
+
+Or step by step: `npm run build` → `npm run migration:run:prod` → `npm run start:prod`.
+
+Health check: `GET /health`
 
 ## Resources
 

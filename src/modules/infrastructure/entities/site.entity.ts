@@ -31,14 +31,14 @@ export class Site {
   @Column({ unique: true })
   api_key_hash: string;
 
-  @Column({ default: 'offline' })
+  @Column({ default: 'active' })
   status: string;
+
+  @Column({ default: 'offline' })
+  connection_status: string;
 
   @Column({ type: 'timestamptz', nullable: true })
   last_seen_at: Date | null;
-
-  @Column({ default: true })
-  is_active: boolean;
 
   @Column({ nullable: true })
   timezone: string;
