@@ -37,6 +37,9 @@ export class Organization {
   @Column({ default: 'active' })
   status: string; // active | inactive
 
+  @Column({ nullable: true })
+  created_by: string;
+
   @OneToMany(() => Account, (account) => account.organization)
   accounts: Account[];
 

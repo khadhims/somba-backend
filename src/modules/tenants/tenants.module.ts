@@ -5,9 +5,13 @@ import { Account } from './entities/account.entity';
 import { Team } from './entities/team.entity';
 import { TenantsService } from './services/tenants.service';
 import { TenantsController } from './controller/tenants.controller';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Organization, Account, Team])],
+  imports: [
+    TypeOrmModule.forFeature([Organization, Account, Team]),
+    UsersModule,
+  ],
   exports: [TypeOrmModule],
   providers: [TenantsService],
   controllers: [TenantsController],

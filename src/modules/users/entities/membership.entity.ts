@@ -10,6 +10,7 @@ import { User } from './user.entity';
 import { Organization } from '../../tenants/entities/organization.entity';
 import { Account } from '../../tenants/entities/account.entity';
 import { Team } from '../../tenants/entities/team.entity';
+import { MembershipRole } from '../../../common/constants/membership-role.enum';
 
 @Entity('memberships')
 export class Membership {
@@ -44,8 +45,8 @@ export class Membership {
   @JoinColumn({ name: 'team_uid' })
   team: Team;
 
-  @Column()
-  role: string; // Admin, Viewer, etc.
+  @Column({ type: 'varchar' })
+  role: MembershipRole;
 
   @CreateDateColumn()
   joined_at: Date;

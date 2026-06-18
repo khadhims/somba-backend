@@ -7,9 +7,13 @@ import { CameraActivity } from './entities/camera-activity.entity';
 import { InfrastructureService } from './services/infrastructure.service';
 import { ActivityService } from './services/activity.service';
 import { InfrastructureController } from './controller/infrastructure.controller';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Site, Camera, Activity, CameraActivity])],
+  imports: [
+    TypeOrmModule.forFeature([Site, Camera, Activity, CameraActivity]),
+    UsersModule,
+  ],
   exports: [TypeOrmModule, InfrastructureService, ActivityService],
   providers: [InfrastructureService, ActivityService],
   controllers: [InfrastructureController],

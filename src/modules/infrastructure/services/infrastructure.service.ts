@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Site } from '../entities/site.entity';
 import { Camera } from '../entities/camera.entity';
 import { CreateSiteDto } from '../dtos/create-site.dto';
@@ -11,6 +11,7 @@ import { UpdateSiteDto } from '../dtos/update-site.dto';
 import { UpdateCameraDto } from '../dtos/update-camera.dto';
 import { hashApiKey } from '../../../common/utils/api-key.util';
 import { SiteWithOneTimeApiKey } from '../entities/site.entity';
+import { AuthorizationService } from '../../users/services/authorization.service';
 
 @Injectable()
 export class InfrastructureService {
@@ -20,6 +21,7 @@ export class InfrastructureService {
     @InjectRepository(Camera)
     private cameraRepository: Repository<Camera>,
     private moduleRef: ModuleRef,
+    private authorizationService: AuthorizationService,
   ) {}
 
   notifySiteConfigUpdated(siteUid: string | null | undefined) {
@@ -39,15 +41,26 @@ export class InfrastructureService {
     }
   }
 
-  // Sites
-  async findAllSites(): Promise<Site[]> {
-    return this.siteRepository.find();
+  async findAllSites(userUid: string): Promise<Site[]> {
+    const uids = await this.authorizationService.getAccessibleSiteUids(userUid);
+    if (uids.length === 0) {
+      return [];
+    }
+    return this.siteRepository.find({ where: { uid: In(uids) } });
   }
 
-  async createSite(data: CreateSiteDto): Promise<SiteWithOneTimeApiKey> {
+  async createSite(
+    data: CreateSiteDto,
+    userUid: string,
+  ): Promise<SiteWithOneTimeApiKey> {
+    if (!data.team_uid) {
+      throw new NotFoundException('team_uid is required');
+    }
+    await this.authorizationService.assertCanWriteTeam(userUid, data.team_uid);
     const plainApiKey = data.api_key?.trim() || randomUUID();
     const site = this.siteRepository.create({
       ...data,
+      created_by: userUid,
       api_key_hash: await hashApiKey(plainApiKey),
       status: data.status ?? 'active',
       connection_status: 'offline',
@@ -60,23 +73,43 @@ export class InfrastructureService {
     return Object.assign(saved, { api_key: plainApiKey });
   }
 
-  async findSitesByTeam(teamUid: string): Promise<Site[]> {
-    return this.siteRepository.find({ where: { team_uid: teamUid } });
+  async findSitesByTeam(teamUid: string, userUid: string): Promise<Site[]> {
+    await this.authorizationService.assertCanReadTeam(userUid, teamUid);
+    const accessibleSiteUids =
+      await this.authorizationService.getAccessibleSiteUids(userUid, teamUid);
+    if (accessibleSiteUids.length === 0) {
+      return [];
+    }
+    return this.siteRepository.find({
+      where: { uid: In(accessibleSiteUids) },
+    });
   }
 
-  async findSiteByUid(uid: string): Promise<Site | null> {
+  async findSiteByUid(uid: string, userUid: string): Promise<Site | null> {
+    await this.authorizationService.assertCanReadSite(userUid, uid);
     return this.siteRepository.findOne({ where: { uid } });
   }
 
-  async updateSite(uid: string, data: UpdateSiteDto): Promise<Site> {
-    const site = await this.findSiteByUid(uid);
-    if (!site) throw new NotFoundException(`Site with UID ${uid} not found`);
+  async updateSite(
+    uid: string,
+    data: UpdateSiteDto,
+    userUid: string,
+  ): Promise<Site> {
+    await this.authorizationService.assertCanWriteSite(userUid, uid);
+    const site = await this.siteRepository.findOne({ where: { uid } });
+    if (!site) {
+      throw new NotFoundException(`Site with UID ${uid} not found`);
+    }
     Object.assign(site, data);
     return this.siteRepository.save(site);
   }
 
-  async regenerateSiteApiKey(uid: string): Promise<SiteWithOneTimeApiKey> {
-    const site = await this.findSiteByUid(uid);
+  async regenerateSiteApiKey(
+    uid: string,
+    userUid: string,
+  ): Promise<SiteWithOneTimeApiKey> {
+    await this.authorizationService.assertCanWriteSite(userUid, uid);
+    const site = await this.siteRepository.findOne({ where: { uid } });
     if (!site) {
       throw new NotFoundException(`Site with UID ${uid} not found`);
     }
@@ -87,13 +120,14 @@ export class InfrastructureService {
     return Object.assign(saved, { api_key: plainApiKey });
   }
 
-  async removeSite(uid: string): Promise<void> {
+  async removeSite(uid: string, userUid: string): Promise<void> {
+    await this.authorizationService.assertCanWriteSite(userUid, uid);
     const result = await this.siteRepository.delete(uid);
-    if (result.affected === 0)
+    if (result.affected === 0) {
       throw new NotFoundException(`Site with UID ${uid} not found`);
+    }
   }
 
-  // Cameras
   private normalizeCameraPayload(data: CreateCameraDto | UpdateCameraDto) {
     const { cam_type, type, ...rest } = data;
     const { room_id: _legacyRoomId, ...cameraData } = rest as typeof rest & {
@@ -106,7 +140,11 @@ export class InfrastructureService {
     };
   }
 
-  async createCamera(data: CreateCameraDto): Promise<Camera> {
+  async createCamera(data: CreateCameraDto, userUid: string): Promise<Camera> {
+    if (!data.site_uid) {
+      throw new NotFoundException('site_uid is required');
+    }
+    await this.authorizationService.assertCanWriteSite(userUid, data.site_uid);
     const camera = this.cameraRepository.create(
       this.normalizeCameraPayload(data),
     );
@@ -115,24 +153,37 @@ export class InfrastructureService {
     return saved;
   }
 
-  async findCamerasBySite(siteUid: string): Promise<Camera[]> {
+  async findCamerasBySite(siteUid: string, userUid: string): Promise<Camera[]> {
+    await this.authorizationService.assertCanReadSite(userUid, siteUid);
     return this.cameraRepository.find({
       where: { site_uid: siteUid },
     });
   }
 
-  async findCameraByUid(uid: string): Promise<Camera | null> {
-    return this.cameraRepository.findOne({
+  async findCameraByUid(
+    uid: string,
+    userUid?: string,
+  ): Promise<Camera | null> {
+    const camera = await this.cameraRepository.findOne({
       where: { uid },
       relations: { site: true },
     });
+    if (!camera) {
+      return null;
+    }
+    if (userUid) {
+      await this.authorizationService.assertCanReadSite(userUid, camera.site_uid);
+    }
+    return camera;
   }
 
   async findCameraBySite(
     siteUid: string,
     cameraUid: string,
+    userUid: string,
   ): Promise<Camera | null> {
-    const camera = await this.findCameraByUid(cameraUid);
+    await this.authorizationService.assertCanReadSite(userUid, siteUid);
+    const camera = await this.findCameraByUid(cameraUid, userUid);
     if (!camera || camera.site_uid !== siteUid) {
       throw new NotFoundException(
         `Camera with UID ${cameraUid} not found in site ${siteUid}`,
@@ -141,25 +192,34 @@ export class InfrastructureService {
     return camera;
   }
 
-  async updateCamera(uid: string, data: UpdateCameraDto): Promise<Camera> {
-    const camera = await this.findCameraByUid(uid);
-    if (!camera)
+  async updateCamera(
+    uid: string,
+    data: UpdateCameraDto,
+    userUid: string,
+  ): Promise<Camera> {
+    const camera = await this.cameraRepository.findOne({ where: { uid } });
+    if (!camera) {
       throw new NotFoundException(`Camera with UID ${uid} not found`);
+    }
+    await this.authorizationService.assertCanWriteSite(userUid, camera.site_uid);
     Object.assign(camera, this.normalizeCameraPayload(data));
     const saved = await this.cameraRepository.save(camera);
     this.notifySiteConfigUpdated(saved.site_uid);
     return saved;
   }
 
-  async removeCamera(uid: string): Promise<void> {
-    const camera = await this.findCameraByUid(uid);
-    if (!camera)
+  async removeCamera(uid: string, userUid: string): Promise<void> {
+    const camera = await this.cameraRepository.findOne({ where: { uid } });
+    if (!camera) {
       throw new NotFoundException(`Camera with UID ${uid} not found`);
+    }
+    await this.authorizationService.assertCanWriteSite(userUid, camera.site_uid);
 
     const siteUid = camera.site_uid;
     const result = await this.cameraRepository.delete(uid);
-    if (result.affected === 0)
+    if (result.affected === 0) {
       throw new NotFoundException(`Camera with UID ${uid} not found`);
+    }
 
     this.notifySiteConfigUpdated(siteUid);
   }

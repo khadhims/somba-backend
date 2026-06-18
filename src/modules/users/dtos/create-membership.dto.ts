@@ -1,12 +1,17 @@
 import {
   IsEmail,
+  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
-  IsString,
   IsUUID,
   ValidateIf,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  INVITABLE_MEMBERSHIP_ROLES,
+  MembershipRole,
+} from '../../../common/constants/membership-role.enum';
 
 export class CreateMembershipDto {
   @ApiProperty({ example: 'user@example.com', required: false })
@@ -21,10 +26,15 @@ export class CreateMembershipDto {
   @IsNotEmpty()
   user_uid?: string;
 
-  @ApiProperty({ example: 'ADMIN' })
-  @IsString()
+  @ApiProperty({
+    enum: INVITABLE_MEMBERSHIP_ROLES,
+    example: MembershipRole.ADMIN,
+    description: 'ADMIN: full access, VIEWER: read-only',
+  })
+  @IsEnum(MembershipRole)
+  @IsIn(INVITABLE_MEMBERSHIP_ROLES)
   @IsNotEmpty()
-  role: string;
+  role: MembershipRole;
 
   @ApiProperty({ example: 'organization-uuid', required: false })
   @IsUUID()

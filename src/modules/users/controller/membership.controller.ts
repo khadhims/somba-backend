@@ -11,6 +11,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { MembershipService } from '../services/membership.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorator/current-user.decorator';
+import { User } from '../entities/user.entity';
 import { CreateMembershipDto } from '../dtos/create-membership.dto';
 import { UpdateMembershipDto } from '../dtos/update-membership.dto';
 
@@ -23,8 +25,11 @@ export class MembershipController {
 
   @Get('organizations/:entityUid/memberships')
   @ApiOperation({ summary: 'List memberships by organization' })
-  findByOrganization(@Param('entityUid') entityUid: string) {
-    return this.membershipService.findByOrganization(entityUid);
+  findByOrganization(
+    @Param('entityUid') entityUid: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.membershipService.findByOrganization(entityUid, user.uid);
   }
 
   @Post('organizations/:entityUid/memberships')
@@ -32,11 +37,15 @@ export class MembershipController {
   createForOrganization(
     @Param('entityUid') entityUid: string,
     @Body() data: CreateMembershipDto,
+    @CurrentUser() user: User,
   ) {
-    return this.membershipService.create({
-      ...data,
-      organization_uid: entityUid,
-    });
+    return this.membershipService.create(
+      {
+        ...data,
+        organization_uid: entityUid,
+      },
+      user.uid,
+    );
   }
 
   @Patch('organizations/:entityUid/memberships/:uid')
@@ -44,20 +53,24 @@ export class MembershipController {
   updateForOrganization(
     @Param('uid') uid: string,
     @Body() data: UpdateMembershipDto,
+    @CurrentUser() user: User,
   ) {
-    return this.membershipService.update(uid, data);
+    return this.membershipService.update(uid, data, user.uid);
   }
 
   @Delete('organizations/:entityUid/memberships/:uid')
   @ApiOperation({ summary: 'Remove organization membership' })
-  removeForOrganization(@Param('uid') uid: string) {
-    return this.membershipService.remove(uid);
+  removeForOrganization(@Param('uid') uid: string, @CurrentUser() user: User) {
+    return this.membershipService.remove(uid, user.uid);
   }
 
   @Get('accounts/:entityUid/memberships')
   @ApiOperation({ summary: 'List memberships by account' })
-  findByAccount(@Param('entityUid') entityUid: string) {
-    return this.membershipService.findByAccount(entityUid);
+  findByAccount(
+    @Param('entityUid') entityUid: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.membershipService.findByAccount(entityUid, user.uid);
   }
 
   @Post('accounts/:entityUid/memberships')
@@ -65,11 +78,15 @@ export class MembershipController {
   createForAccount(
     @Param('entityUid') entityUid: string,
     @Body() data: CreateMembershipDto,
+    @CurrentUser() user: User,
   ) {
-    return this.membershipService.create({
-      ...data,
-      account_uid: entityUid,
-    });
+    return this.membershipService.create(
+      {
+        ...data,
+        account_uid: entityUid,
+      },
+      user.uid,
+    );
   }
 
   @Patch('accounts/:entityUid/memberships/:uid')
@@ -77,20 +94,24 @@ export class MembershipController {
   updateForAccount(
     @Param('uid') uid: string,
     @Body() data: UpdateMembershipDto,
+    @CurrentUser() user: User,
   ) {
-    return this.membershipService.update(uid, data);
+    return this.membershipService.update(uid, data, user.uid);
   }
 
   @Delete('accounts/:entityUid/memberships/:uid')
   @ApiOperation({ summary: 'Remove account membership' })
-  removeForAccount(@Param('uid') uid: string) {
-    return this.membershipService.remove(uid);
+  removeForAccount(@Param('uid') uid: string, @CurrentUser() user: User) {
+    return this.membershipService.remove(uid, user.uid);
   }
 
   @Get('teams/:entityUid/memberships')
   @ApiOperation({ summary: 'List memberships by team' })
-  findByTeam(@Param('entityUid') entityUid: string) {
-    return this.membershipService.findByTeam(entityUid);
+  findByTeam(
+    @Param('entityUid') entityUid: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.membershipService.findByTeam(entityUid, user.uid);
   }
 
   @Post('teams/:entityUid/memberships')
@@ -98,11 +119,15 @@ export class MembershipController {
   createForTeam(
     @Param('entityUid') entityUid: string,
     @Body() data: CreateMembershipDto,
+    @CurrentUser() user: User,
   ) {
-    return this.membershipService.create({
-      ...data,
-      team_uid: entityUid,
-    });
+    return this.membershipService.create(
+      {
+        ...data,
+        team_uid: entityUid,
+      },
+      user.uid,
+    );
   }
 
   @Patch('teams/:entityUid/memberships/:uid')
@@ -110,13 +135,14 @@ export class MembershipController {
   updateForTeam(
     @Param('uid') uid: string,
     @Body() data: UpdateMembershipDto,
+    @CurrentUser() user: User,
   ) {
-    return this.membershipService.update(uid, data);
+    return this.membershipService.update(uid, data, user.uid);
   }
 
   @Delete('teams/:entityUid/memberships/:uid')
   @ApiOperation({ summary: 'Remove team membership' })
-  removeForTeam(@Param('uid') uid: string) {
-    return this.membershipService.remove(uid);
+  removeForTeam(@Param('uid') uid: string, @CurrentUser() user: User) {
+    return this.membershipService.remove(uid, user.uid);
   }
 }
