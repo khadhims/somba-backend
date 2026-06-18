@@ -298,6 +298,3 @@ export class ActivityService {
     return camera;
   }
 }
-a;
-  }
-}
