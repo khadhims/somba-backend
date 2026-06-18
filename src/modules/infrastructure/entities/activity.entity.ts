@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Site } from './site.entity';
-import { CameraActivity } from './camera-activity.entity';
+import { Camera } from './camera.entity';
 
 @Entity('activities')
 export class Activity {
@@ -47,8 +47,8 @@ export class Activity {
   @Column({ default: true })
   is_active: boolean;
 
-  @OneToMany(() => CameraActivity, (assignment) => assignment.activity)
-  camera_assignments: CameraActivity[];
+  @OneToMany(() => Camera, (camera) => camera.activity)
+  cameras: Camera[];
 
   @CreateDateColumn()
   created_at: Date;

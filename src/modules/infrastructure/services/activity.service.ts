@@ -6,7 +6,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Activity } from '../entities/activity.entity';
-import { CameraActivity } from '../entities/camera-activity.entity';
 import { Camera } from '../entities/camera.entity';
 import { CreateActivityDto } from '../dtos/create-activity.dto';
 import { UpdateActivityDto } from '../dtos/update-activity.dto';
@@ -16,8 +15,6 @@ export class ActivityService {
   constructor(
     @InjectRepository(Activity)
     private activityRepository: Repository<Activity>,
-    @InjectRepository(CameraActivity)
-    private cameraActivityRepository: Repository<CameraActivity>,
     @InjectRepository(Camera)
     private cameraRepository: Repository<Camera>,
   ) {}
@@ -25,15 +22,15 @@ export class ActivityService {
   async findBySite(siteUid: string): Promise<any[]> {
     const activities = await this.activityRepository.find({
       where: { site_uid: siteUid },
-      relations: { camera_assignments: true },
+      relations: { cameras: true },
       order: { name: 'ASC' },
     });
 
     return activities.map((activity) => {
-      const { camera_assignments, ...rest } = activity;
+      const { cameras, ...rest } = activity;
       return {
         ...rest,
-        camera_uids: camera_assignments?.map((c) => c.camera_uid) || [],
+        camera_uids: cameras?.map((c) => c.uid) || [],
       };
     });
   }
@@ -106,12 +103,20 @@ export class ActivityService {
       }
     }
 
-    if (data.ai_model !== undefined) {
-      data.ai_model = this.normalizeAiModel(data.ai_model);
+    const { camera_uids, ...updateData } = data;
+
+    if (updateData.ai_model !== undefined) {
+      updateData.ai_model = this.normalizeAiModel(updateData.ai_model);
     }
 
-    Object.assign(activity, data);
-    return this.activityRepository.save(activity);
+    Object.assign(activity, updateData);
+    const saved = await this.activityRepository.save(activity);
+    
+    if (camera_uids !== undefined) {
+      await this.assignCamerasToActivity(siteUid, saved.uid, camera_uids);
+    }
+    
+    return saved;
   }
 
   async remove(siteUid: string, activityUid: string): Promise<void> {
@@ -123,26 +128,28 @@ export class ActivityService {
     siteUid: string,
     cameraUid: string,
   ): Promise<Activity[]> {
-    await this.assertCameraInSite(siteUid, cameraUid);
-
-    const assignments = await this.cameraActivityRepository.find({
-      where: { camera_uid: cameraUid, enabled: true },
-      relations: { activity: true },
-    });
-
-    return assignments
-      .map((assignment) => assignment.activity)
-      .filter((activity) => activity.is_active);
+    const camera = await this.assertCameraInSite(siteUid, cameraUid);
+    
+    if (camera.activity_uid) {
+      const activity = await this.activityRepository.findOne({ where: { uid: camera.activity_uid, is_active: true } });
+      if (activity) {
+        return [activity];
+      }
+    }
+    return [];
   }
 
   async listAssignmentsForCamera(siteUid: string, cameraUid: string) {
-    await this.assertCameraInSite(siteUid, cameraUid);
-
-    return this.cameraActivityRepository.find({
-      where: { camera_uid: cameraUid },
-      relations: { activity: true },
-      order: { activity: { name: 'ASC' } },
-    });
+    const camera = await this.assertCameraInSite(siteUid, cameraUid);
+    if (!camera.activity_uid) return [];
+    
+    const activity = await this.activityRepository.findOne({ where: { uid: camera.activity_uid } });
+    if (!activity) return [];
+    
+    return [{
+      activity: activity,
+      enabled: true
+    }];
   }
 
   async assignActivitiesToCamera(
@@ -150,31 +157,26 @@ export class ActivityService {
     cameraUid: string,
     activityUids: string[],
   ): Promise<Activity[]> {
-    await this.assertCameraInSite(siteUid, cameraUid);
+    const camera = await this.assertCameraInSite(siteUid, cameraUid);
 
     const uniqueUids = [...new Set(activityUids)];
-    if (uniqueUids.length > 0) {
-      const activities = await this.activityRepository.find({
-        where: { uid: In(uniqueUids), site_uid: siteUid },
-      });
-      if (activities.length !== uniqueUids.length) {
-        throw new BadRequestException(
-          'One or more activities do not belong to this site',
-        );
-      }
+    
+    if (uniqueUids.length > 1) {
+      throw new BadRequestException('A camera can only be assigned to a maximum of 1 activity.');
     }
 
-    await this.cameraActivityRepository.delete({ camera_uid: cameraUid });
-
-    if (uniqueUids.length > 0) {
-      const rows = uniqueUids.map((activityUid) =>
-        this.cameraActivityRepository.create({
-          camera_uid: cameraUid,
-          activity_uid: activityUid,
-          enabled: true,
-        }),
-      );
-      await this.cameraActivityRepository.save(rows);
+    if (uniqueUids.length === 1) {
+      const activityUid = uniqueUids[0];
+      const activity = await this.activityRepository.findOne({
+        where: { uid: activityUid, site_uid: siteUid },
+      });
+      if (!activity) {
+        throw new BadRequestException('Activity does not belong to this site or does not exist');
+      }
+      
+      await this.cameraRepository.update({ uid: cameraUid }, { activity_uid: activityUid });
+    } else {
+      await this.cameraRepository.update({ uid: cameraUid }, { activity_uid: null });
     }
 
     return this.getAssignmentsForCamera(siteUid, cameraUid);
@@ -192,17 +194,16 @@ export class ActivityService {
       await this.assertCameraInSite(siteUid, cameraUid);
     }
 
-    await this.cameraActivityRepository.delete({ activity_uid: activityUid });
+    await this.cameraRepository.update(
+      { site_uid: siteUid, activity_uid: activityUid },
+      { activity_uid: null }
+    );
 
     if (uniqueCameraUids.length > 0) {
-      const rows = uniqueCameraUids.map((cameraUid) =>
-        this.cameraActivityRepository.create({
-          camera_uid: cameraUid,
-          activity_uid: activityUid,
-          enabled: true,
-        }),
+      await this.cameraRepository.update(
+        { uid: In(uniqueCameraUids) },
+        { activity_uid: activityUid }
       );
-      await this.cameraActivityRepository.save(rows);
     }
   }
 
@@ -220,31 +221,27 @@ export class ActivityService {
       };
     }>
   > {
-    const assignments = await this.cameraActivityRepository.find({
-      where: { camera_uid: cameraUid, enabled: true },
-      relations: { activity: true },
-    });
+    const camera = await this.cameraRepository.findOne({ where: { uid: cameraUid } });
+    if (!camera || !camera.activity_uid) return [];
+    
+    const activity = await this.activityRepository.findOne({ where: { uid: camera.activity_uid, is_active: true } });
+    if (!activity) return [];
 
-    return assignments
-      .filter((assignment) => assignment.activity?.is_active)
-      .map((assignment) => {
-        const activity = assignment.activity;
-        const recordingConfig =
-          (activity.recording_config as Record<string, unknown>) ?? {};
+    const recordingConfig =
+      (activity.recording_config as Record<string, unknown>) ?? {};
 
-        return {
-          activity_uid: activity.uid,
-          code: activity.code,
-          name: activity.name,
-          ai_model: activity.ai_model,
-          target_classes: activity.target_classes ?? [],
-          min_confidence: activity.min_confidence ?? 0.5,
-          recording: {
-            post_buffer_sec: Number(recordingConfig.post_buffer_sec ?? 10),
-            max_segment_sec: Number(recordingConfig.max_segment_sec ?? 300),
-          },
-        };
-      });
+    return [{
+      activity_uid: activity.uid,
+      code: activity.code,
+      name: activity.name,
+      ai_model: activity.ai_model,
+      target_classes: activity.target_classes ?? [],
+      min_confidence: activity.min_confidence ?? 0.5,
+      recording: {
+        post_buffer_sec: Number(recordingConfig.post_buffer_sec ?? 10),
+        max_segment_sec: Number(recordingConfig.max_segment_sec ?? 300),
+      },
+    }];
   }
 
   private slugifyName(name: string): string {
