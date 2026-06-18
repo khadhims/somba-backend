@@ -46,6 +46,9 @@ export class Site {
   @Column()
   team_uid: string;
 
+  @Column({ nullable: true })
+  created_by: string;
+
   @ManyToOne(() => Team, (team) => team.sites)
   @JoinColumn({ name: 'team_uid' })
   team: Team;

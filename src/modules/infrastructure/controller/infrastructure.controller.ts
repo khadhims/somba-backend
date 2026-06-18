@@ -8,14 +8,18 @@ import {
   Patch,
   Delete,
   Put,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InfrastructureService } from '../services/infrastructure.service';
 import { ActivityService } from '../services/activity.service';
+import { AuthorizationService } from '../../users/services/authorization.service';
 import { CreateActivityDto } from '../dtos/create-activity.dto';
 import { UpdateActivityDto } from '../dtos/update-activity.dto';
 import { AssignCameraActivitiesDto } from '../dtos/assign-camera-activities.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorator/current-user.decorator';
+import { User } from '../../users/entities/user.entity';
 import { CreateSiteDto } from '../dtos/create-site.dto';
 import { CreateCameraDto } from '../dtos/create-camera.dto';
 import { UpdateSiteDto } from '../dtos/update-site.dto';
@@ -29,24 +33,25 @@ export class InfrastructureController {
   constructor(
     private infraService: InfrastructureService,
     private activityService: ActivityService,
+    private authorizationService: AuthorizationService,
   ) {}
 
   @Get('sites')
-  @ApiOperation({ summary: 'List all sites' })
-  findAllSites() {
-    return this.infraService.findAllSites();
+  @ApiOperation({ summary: 'List sites accessible to current user' })
+  findAllSites(@CurrentUser() user: User) {
+    return this.infraService.findAllSites(user.uid);
   }
 
   @Get('sites/:uid')
   @ApiOperation({ summary: 'Get site by UID' })
-  findSite(@Param('uid') uid: string) {
-    return this.infraService.findSiteByUid(uid);
+  findSite(@Param('uid') uid: string, @CurrentUser() user: User) {
+    return this.infraService.findSiteByUid(uid, user.uid);
   }
 
   @Post('sites')
   @ApiOperation({ summary: 'Create site' })
-  createSite(@Body() data: CreateSiteDto) {
-    return this.infraService.createSite(data);
+  createSite(@Body() data: CreateSiteDto, @CurrentUser() user: User) {
+    return this.infraService.createSite(data, user.uid);
   }
 
   @Post('teams/:teamUid/sites')
@@ -54,41 +59,55 @@ export class InfrastructureController {
   createSiteForTeam(
     @Param('teamUid') teamUid: string,
     @Body() data: CreateSiteDto,
+    @CurrentUser() user: User,
   ) {
-    return this.infraService.createSite({
-      ...data,
-      team_uid: teamUid,
-    });
+    return this.infraService.createSite(
+      {
+        ...data,
+        team_uid: teamUid,
+      },
+      user.uid,
+    );
   }
 
   @Get('teams/:teamUid/sites')
   @ApiOperation({ summary: 'List sites by team' })
-  findSitesByTeam(@Param('teamUid') teamUid: string) {
-    return this.infraService.findSitesByTeam(teamUid);
+  findSitesByTeam(
+    @Param('teamUid') teamUid: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.infraService.findSitesByTeam(teamUid, user.uid);
   }
 
   @Patch('sites/:uid')
   @ApiOperation({ summary: 'Update site' })
-  updateSite(@Param('uid') uid: string, @Body() data: UpdateSiteDto) {
-    return this.infraService.updateSite(uid, data);
+  updateSite(
+    @Param('uid') uid: string,
+    @Body() data: UpdateSiteDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.infraService.updateSite(uid, data, user.uid);
   }
 
   @Delete('sites/:uid')
   @ApiOperation({ summary: 'Delete site' })
-  removeSite(@Param('uid') uid: string) {
-    return this.infraService.removeSite(uid);
+  removeSite(@Param('uid') uid: string, @CurrentUser() user: User) {
+    return this.infraService.removeSite(uid, user.uid);
   }
 
   @Post('sites/:uid/regenerate-key')
   @ApiOperation({ summary: 'Regenerate mini-PC API key for site' })
-  regenerateSiteApiKey(@Param('uid') uid: string) {
-    return this.infraService.regenerateSiteApiKey(uid);
+  regenerateSiteApiKey(@Param('uid') uid: string, @CurrentUser() user: User) {
+    return this.infraService.regenerateSiteApiKey(uid, user.uid);
   }
 
   @Get('sites/:siteUid/cameras')
   @ApiOperation({ summary: 'List cameras by site' })
-  findCamerasBySite(@Param('siteUid') siteUid: string) {
-    return this.infraService.findCamerasBySite(siteUid);
+  findCamerasBySite(
+    @Param('siteUid') siteUid: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.infraService.findCamerasBySite(siteUid, user.uid);
   }
 
   @Get('sites/:siteUid/cameras/:cameraUid')
@@ -96,8 +115,9 @@ export class InfrastructureController {
   findCameraBySite(
     @Param('siteUid') siteUid: string,
     @Param('cameraUid') cameraUid: string,
+    @CurrentUser() user: User,
   ) {
-    return this.infraService.findCameraBySite(siteUid, cameraUid);
+    return this.infraService.findCameraBySite(siteUid, cameraUid, user.uid);
   }
 
   @Post('sites/:siteUid/cameras')
@@ -105,11 +125,15 @@ export class InfrastructureController {
   createCameraForSite(
     @Param('siteUid') siteUid: string,
     @Body() data: CreateCameraDto,
+    @CurrentUser() user: User,
   ) {
-    return this.infraService.createCamera({
-      ...data,
-      site_uid: siteUid,
-    });
+    return this.infraService.createCamera(
+      {
+        ...data,
+        site_uid: siteUid,
+      },
+      user.uid,
+    );
   }
 
   @Patch('sites/:siteUid/cameras/:cameraUid')
@@ -117,19 +141,28 @@ export class InfrastructureController {
   updateCameraForSite(
     @Param('cameraUid') cameraUid: string,
     @Body() data: UpdateCameraDto,
+    @CurrentUser() user: User,
   ) {
-    return this.infraService.updateCamera(cameraUid, data);
+    return this.infraService.updateCamera(cameraUid, data, user.uid);
   }
 
   @Delete('sites/:siteUid/cameras/:cameraUid')
   @ApiOperation({ summary: 'Delete camera under site' })
-  removeCameraForSite(@Param('cameraUid') cameraUid: string) {
-    return this.infraService.removeCamera(cameraUid);
+  removeCameraForSite(
+    @Param('cameraUid') cameraUid: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.infraService.removeCamera(cameraUid, user.uid);
   }
 
   @Post('cameras/:uid/start-recording')
   @ApiOperation({ summary: 'Start recording for camera' })
-  startRecording(@Param('uid') uid: string) {
+  async startRecording(@Param('uid') uid: string, @CurrentUser() user: User) {
+    const camera = await this.infraService.findCameraByUid(uid, user.uid);
+    if (!camera) {
+      throw new NotFoundException(`Camera with UID ${uid} not found`);
+    }
+    await this.authorizationService.assertCanWriteSite(user.uid, camera.site_uid);
     return {
       status: 'success',
       message: `Started recording for camera ${uid}`,
@@ -138,7 +171,11 @@ export class InfrastructureController {
 
   @Get('sites/:siteUid/activity-definitions')
   @ApiOperation({ summary: 'List activity definitions by site' })
-  findActivityDefinitionsBySite(@Param('siteUid') siteUid: string) {
+  async findActivityDefinitionsBySite(
+    @Param('siteUid') siteUid: string,
+    @CurrentUser() user: User,
+  ) {
+    await this.authorizationService.assertCanReadSite(user.uid, siteUid);
     return this.activityService.findBySite(siteUid);
   }
 
@@ -147,7 +184,9 @@ export class InfrastructureController {
   async createActivityDefinition(
     @Param('siteUid') siteUid: string,
     @Body() data: CreateActivityDto,
+    @CurrentUser() user: User,
   ) {
+    await this.authorizationService.assertCanWriteSite(user.uid, siteUid);
     const activity = await this.activityService.create(siteUid, data);
     this.infraService.notifySiteConfigUpdated(siteUid);
     return activity;
@@ -159,8 +198,14 @@ export class InfrastructureController {
     @Param('siteUid') siteUid: string,
     @Param('activityUid') activityUid: string,
     @Body() data: UpdateActivityDto,
+    @CurrentUser() user: User,
   ) {
-    const activity = await this.activityService.update(siteUid, activityUid, data);
+    await this.authorizationService.assertCanWriteSite(user.uid, siteUid);
+    const activity = await this.activityService.update(
+      siteUid,
+      activityUid,
+      data,
+    );
     this.infraService.notifySiteConfigUpdated(siteUid);
     return activity;
   }
@@ -170,7 +215,9 @@ export class InfrastructureController {
   async removeActivityDefinition(
     @Param('siteUid') siteUid: string,
     @Param('activityUid') activityUid: string,
+    @CurrentUser() user: User,
   ) {
+    await this.authorizationService.assertCanWriteSite(user.uid, siteUid);
     await this.activityService.remove(siteUid, activityUid);
     this.infraService.notifySiteConfigUpdated(siteUid);
     return { status: 'success' };
@@ -178,10 +225,12 @@ export class InfrastructureController {
 
   @Get('sites/:siteUid/cameras/:cameraUid/activity-definitions')
   @ApiOperation({ summary: 'List activity definitions assigned to camera' })
-  findCameraActivityDefinitions(
+  async findCameraActivityDefinitions(
     @Param('siteUid') siteUid: string,
     @Param('cameraUid') cameraUid: string,
+    @CurrentUser() user: User,
   ) {
+    await this.authorizationService.assertCanReadSite(user.uid, siteUid);
     return this.activityService.listAssignmentsForCamera(siteUid, cameraUid);
   }
 
@@ -191,7 +240,9 @@ export class InfrastructureController {
     @Param('siteUid') siteUid: string,
     @Param('cameraUid') cameraUid: string,
     @Body() data: AssignCameraActivitiesDto,
+    @CurrentUser() user: User,
   ) {
+    await this.authorizationService.assertCanWriteSite(user.uid, siteUid);
     const activities = await this.activityService.assignActivitiesToCamera(
       siteUid,
       cameraUid,

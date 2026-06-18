@@ -22,6 +22,9 @@ export class Team {
   @Column()
   account_uid: string;
 
+  @Column({ nullable: true })
+  created_by: string;
+
   @ManyToOne(() => Account, (account) => account.teams)
   @JoinColumn({ name: 'account_uid' })
   account: Account;
