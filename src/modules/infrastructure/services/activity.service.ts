@@ -22,10 +22,19 @@ export class ActivityService {
     private cameraRepository: Repository<Camera>,
   ) {}
 
-  async findBySite(siteUid: string): Promise<Activity[]> {
-    return this.activityRepository.find({
+  async findBySite(siteUid: string): Promise<any[]> {
+    const activities = await this.activityRepository.find({
       where: { site_uid: siteUid },
+      relations: { camera_assignments: true },
       order: { name: 'ASC' },
+    });
+
+    return activities.map((activity) => {
+      const { camera_assignments, ...rest } = activity;
+      return {
+        ...rest,
+        camera_uids: camera_assignments?.map((c) => c.camera_uid) || [],
+      };
     });
   }
 
@@ -55,8 +64,10 @@ export class ActivityService {
       );
     }
 
+    const { camera_uids, ...activityData } = data;
+
     const activity = this.activityRepository.create({
-      ...data,
+      ...activityData,
       code,
       ai_model: this.normalizeAiModel(data.ai_model),
       site_uid: siteUid,
@@ -67,7 +78,14 @@ export class ActivityService {
       },
       is_active: data.is_active ?? true,
     });
-    return this.activityRepository.save(activity);
+    
+    const saved = await this.activityRepository.save(activity);
+    
+    if (camera_uids !== undefined) {
+      await this.assignCamerasToActivity(siteUid, saved.uid, camera_uids);
+    }
+    
+    return saved;
   }
 
   async update(
@@ -278,5 +296,8 @@ export class ActivityService {
       );
     }
     return camera;
+  }
+}
+a;
   }
 }

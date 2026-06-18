@@ -12,6 +12,17 @@ import { UpdateAccountDto } from '../dtos/update-account.dto';
 import { UpdateTeamDto } from '../dtos/update-team.dto';
 import { AuthorizationService } from '../../users/services/authorization.service';
 
+const ORGANIZATION_CREATOR_RELATIONS = { creator: true } as const;
+
+const TEAM_WITH_SITES_CREATOR_RELATIONS = {
+  creator: true,
+  sites: { creator: true },
+} as const;
+
+const ACCOUNT_WITH_TEAMS_CREATOR_RELATIONS = {
+  teams: TEAM_WITH_SITES_CREATOR_RELATIONS,
+} as const;
+
 @Injectable()
 export class TenantsService {
   constructor(
@@ -36,7 +47,11 @@ export class TenantsService {
     await this.authorizationService.createOwnerMembership(userUid, {
       organization_uid: saved.uid,
     });
-    return saved;
+    const reloaded = await this.orgRepository.findOne({
+      where: { uid: saved.uid },
+      relations: ORGANIZATION_CREATOR_RELATIONS,
+    });
+    return reloaded ?? saved;
   }
 
   async findAllOrganizations(userUid: string): Promise<Organization[]> {
@@ -46,7 +61,10 @@ export class TenantsService {
     if (uids.length === 0) {
       return [];
     }
-    return this.orgRepository.find({ where: { uid: In(uids) } });
+    return this.orgRepository.find({
+      where: { uid: In(uids) },
+      relations: ORGANIZATION_CREATOR_RELATIONS,
+    });
   }
 
   async findOrganizationByUid(
@@ -56,7 +74,10 @@ export class TenantsService {
     await this.authorizationService.assertCanReadOrganization(userUid, uid);
     return this.orgRepository.findOne({
       where: { uid },
-      relations: { accounts: true },
+      relations: {
+        accounts: true,
+        ...ORGANIZATION_CREATOR_RELATIONS,
+      },
     });
   }
 
@@ -85,7 +106,12 @@ export class TenantsService {
       description?: string;
     };
     Object.assign(org, writable);
-    return this.orgRepository.save(org);
+    const saved = await this.orgRepository.save(org);
+    const reloaded = await this.orgRepository.findOne({
+      where: { uid: saved.uid },
+      relations: ORGANIZATION_CREATOR_RELATIONS,
+    });
+    return reloaded ?? saved;
   }
 
   async removeOrganization(uid: string, userUid: string): Promise<void> {
@@ -123,7 +149,7 @@ export class TenantsService {
     }
     return this.accountRepository.find({
       where: { uid: In(accessibleAccountUids) },
-      relations: { teams: true },
+      relations: ACCOUNT_WITH_TEAMS_CREATOR_RELATIONS,
     });
   }
 
@@ -169,7 +195,12 @@ export class TenantsService {
       ...data,
       created_by: userUid,
     });
-    return this.teamRepository.save(team);
+    const saved = await this.teamRepository.save(team);
+    const reloaded = await this.teamRepository.findOne({
+      where: { uid: saved.uid },
+      relations: TEAM_WITH_SITES_CREATOR_RELATIONS,
+    });
+    return reloaded ?? saved;
   }
 
   async findTeamsByAccount(
@@ -184,13 +215,16 @@ export class TenantsService {
     }
     return this.teamRepository.find({
       where: { uid: In(accessibleTeamUids) },
-      relations: { sites: true },
+      relations: TEAM_WITH_SITES_CREATOR_RELATIONS,
     });
   }
 
   async findTeamByUid(uid: string, userUid: string): Promise<Team | null> {
     await this.authorizationService.assertCanReadTeam(userUid, uid);
-    return this.teamRepository.findOne({ where: { uid } });
+    return this.teamRepository.findOne({
+      where: { uid },
+      relations: TEAM_WITH_SITES_CREATOR_RELATIONS,
+    });
   }
 
   async updateTeam(
@@ -204,7 +238,12 @@ export class TenantsService {
       throw new NotFoundException(`Team with UID ${uid} not found`);
     }
     Object.assign(team, data);
-    return this.teamRepository.save(team);
+    const saved = await this.teamRepository.save(team);
+    const reloaded = await this.teamRepository.findOne({
+      where: { uid: saved.uid },
+      relations: TEAM_WITH_SITES_CREATOR_RELATIONS,
+    });
+    return reloaded ?? saved;
   }
 
   async removeTeam(uid: string, userUid: string): Promise<void> {

@@ -13,6 +13,8 @@ import { hashApiKey } from '../../../common/utils/api-key.util';
 import { SiteWithOneTimeApiKey } from '../entities/site.entity';
 import { AuthorizationService } from '../../users/services/authorization.service';
 
+const SITE_CREATOR_RELATIONS = { creator: true } as const;
+
 @Injectable()
 export class InfrastructureService {
   constructor(
@@ -46,7 +48,10 @@ export class InfrastructureService {
     if (uids.length === 0) {
       return [];
     }
-    return this.siteRepository.find({ where: { uid: In(uids) } });
+    return this.siteRepository.find({
+      where: { uid: In(uids) },
+      relations: SITE_CREATOR_RELATIONS,
+    });
   }
 
   async createSite(
@@ -70,7 +75,11 @@ export class InfrastructureService {
         'UTC',
     });
     const saved = await this.siteRepository.save(site);
-    return Object.assign(saved, { api_key: plainApiKey });
+    const withCreator = await this.siteRepository.findOne({
+      where: { uid: saved.uid },
+      relations: SITE_CREATOR_RELATIONS,
+    });
+    return Object.assign(withCreator ?? saved, { api_key: plainApiKey });
   }
 
   async findSitesByTeam(teamUid: string, userUid: string): Promise<Site[]> {
@@ -82,12 +91,16 @@ export class InfrastructureService {
     }
     return this.siteRepository.find({
       where: { uid: In(accessibleSiteUids) },
+      relations: SITE_CREATOR_RELATIONS,
     });
   }
 
   async findSiteByUid(uid: string, userUid: string): Promise<Site | null> {
     await this.authorizationService.assertCanReadSite(userUid, uid);
-    return this.siteRepository.findOne({ where: { uid } });
+    return this.siteRepository.findOne({
+      where: { uid },
+      relations: SITE_CREATOR_RELATIONS,
+    });
   }
 
   async updateSite(
@@ -101,7 +114,12 @@ export class InfrastructureService {
       throw new NotFoundException(`Site with UID ${uid} not found`);
     }
     Object.assign(site, data);
-    return this.siteRepository.save(site);
+    const saved = await this.siteRepository.save(site);
+    const reloaded = await this.siteRepository.findOne({
+      where: { uid: saved.uid },
+      relations: SITE_CREATOR_RELATIONS,
+    });
+    return reloaded ?? saved;
   }
 
   async regenerateSiteApiKey(
@@ -117,7 +135,11 @@ export class InfrastructureService {
     site.api_key_hash = await hashApiKey(plainApiKey);
     site.connection_status = 'offline';
     const saved = await this.siteRepository.save(site);
-    return Object.assign(saved, { api_key: plainApiKey });
+    const withCreator = await this.siteRepository.findOne({
+      where: { uid: saved.uid },
+      relations: SITE_CREATOR_RELATIONS,
+    });
+    return Object.assign(withCreator ?? saved, { api_key: plainApiKey });
   }
 
   async removeSite(uid: string, userUid: string): Promise<void> {
