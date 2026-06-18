@@ -94,6 +94,7 @@ export class EdgeService {
           camera_uuid: camera.uid,
           name: camera.name,
           rtsp_url: camera.rtsp_url,
+          stream_url: camera.stream_url,
           activities,
         };
       }),
