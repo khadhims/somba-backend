@@ -10,8 +10,10 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Team } from '../../tenants/entities/team.entity';
+import { User } from '../../users/entities/user.entity';
 import { Camera } from './camera.entity';
 import { Event } from '../../operations/entities/event.entity';
+import { CreatedByUserExpose } from '../../../common/decorator/created-by-user.transform';
 
 @Entity('sites')
 export class Site {
@@ -46,8 +48,14 @@ export class Site {
   @Column()
   team_uid: string;
 
+  @Exclude({ toPlainOnly: true })
   @Column({ nullable: true })
   created_by: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'created_by' })
+  @CreatedByUserExpose()
+  creator: User;
 
   @ManyToOne(() => Team, (team) => team.sites)
   @JoinColumn({ name: 'team_uid' })

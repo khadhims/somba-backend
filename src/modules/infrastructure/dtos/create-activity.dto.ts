@@ -69,4 +69,10 @@ export class CreateActivityDto {
   @IsUUID()
   @IsOptional()
   site_uid?: string;
+
+  @ApiProperty({ required: false, type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  camera_uids?: string[];
 }
