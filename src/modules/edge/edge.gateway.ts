@@ -140,11 +140,8 @@ export class EdgeGateway implements OnGatewayConnection, OnGatewayDisconnect {
       };
     }
 
-    const expectedActivity = validation.camera.activity?.trim();
-    if (
-      expectedActivity &&
-      payload.activity_type?.trim() !== expectedActivity
-    ) {
+    const expectedActivity = validation.camera.activity.trim();
+    if (payload.activity_type?.trim() !== expectedActivity) {
       this.logger.warn(
         `Activity mismatch for camera ${payload.camera_uuid}: expected "${expectedActivity}", got "${payload.activity_type}"`,
       );

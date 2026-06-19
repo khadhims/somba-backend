@@ -98,11 +98,10 @@ export class CreateCameraDto {
   @ApiProperty({
     example: 'memasak',
     description: 'Activity label for edge worker recording',
-    required: false,
   })
   @IsString()
-  @IsOptional()
-  activity?: string;
+  @IsNotEmpty()
+  activity: string;
 
   @ApiProperty({
     example: false,
