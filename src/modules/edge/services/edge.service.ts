@@ -8,7 +8,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Site } from '../../infrastructure/entities/site.entity';
 import { Camera } from '../../infrastructure/entities/camera.entity';
-import { ActivityService } from '../../infrastructure/services/activity.service';
 import {
   hashApiKey,
   isHashedApiKey,
@@ -23,7 +22,6 @@ export class EdgeService {
     private siteRepository: Repository<Site>,
     @InjectRepository(Camera)
     private cameraRepository: Repository<Camera>,
-    private activityService: ActivityService,
     @Inject(forwardRef(() => EdgeGateway))
     private edgeGateway: EdgeGateway,
   ) {}
@@ -78,29 +76,28 @@ export class EdgeService {
     return Boolean(camera);
   }
 
+  async getCameraForSite(siteUid: string, cameraUuid: string) {
+    return this.cameraRepository.findOne({
+      where: { uid: cameraUuid, site_uid: siteUid },
+    });
+  }
+
   async getCamerasForSite(siteUid: string) {
     const cameras = await this.cameraRepository.find({
       where: { site_uid: siteUid },
       order: { name: 'ASC' },
     });
 
-    const payloads = await Promise.all(
-      cameras.map(async (camera) => {
-        const activities = await this.activityService.buildEdgeActivitiesForCamera(
-          camera.uid,
-        );
-
-        return {
-          camera_uuid: camera.uid,
-          name: camera.name,
-          rtsp_url: camera.rtsp_url,
-          stream_url: camera.stream_url,
-          activities,
-        };
-      }),
-    );
-
-    return payloads.filter((camera) => camera.activities.length > 0);
+    return cameras
+      .filter((camera) => camera.activity?.trim())
+      .map((camera) => ({
+        camera_uuid: camera.uid,
+        name: camera.name,
+        rtsp_url: camera.rtsp_url,
+        stream_url: camera.stream_url,
+        activity: camera.activity,
+        alert: camera.alert,
+      }));
   }
 
   requireSiteFromApiKey(site: Site | null): Site {

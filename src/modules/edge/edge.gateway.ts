@@ -17,9 +17,9 @@ import {
 import { Server, Socket } from 'socket.io';
 import { EdgeService } from './services/edge.service';
 import { OperationsService } from '../operations/services/operations.service';
-import { InfrastructureService } from '../infrastructure/services/infrastructure.service';
 import { DetectionEventDto } from './dtos/detection-event.dto';
 import { RecordingEventDto } from './dtos/recording-event.dto';
+
 @WebSocketGateway({
   namespace: '/edge',
   cors: {
@@ -36,7 +36,6 @@ export class EdgeGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @Inject(forwardRef(() => EdgeService))
     private edgeService: EdgeService,
     private operationsService: OperationsService,
-    private infraService: InfrastructureService,
   ) {}
 
   private extractToken(client: Socket): string | undefined {
@@ -80,7 +79,10 @@ export class EdgeGateway implements OnGatewayConnection, OnGatewayDisconnect {
       };
     }
 
-    const camera = await this.infraService.findCameraByUid(cameraUuid);
+    const camera = await this.edgeService.getCameraForSite(
+      siteSessionId,
+      cameraUuid,
+    );
     if (!camera) {
       return { ok: false as const, reason: 'Camera not found', edgeId };
     }
@@ -138,11 +140,25 @@ export class EdgeGateway implements OnGatewayConnection, OnGatewayDisconnect {
       };
     }
 
+    const expectedActivity = validation.camera.activity?.trim();
+    if (
+      expectedActivity &&
+      payload.activity_type?.trim() !== expectedActivity
+    ) {
+      this.logger.warn(
+        `Activity mismatch for camera ${payload.camera_uuid}: expected "${expectedActivity}", got "${payload.activity_type}"`,
+      );
+      return {
+        status: 'error',
+        edge_id: payload.edge_id,
+        reason: 'Activity type mismatch for camera',
+      };
+    }
+
     try {
       const event = await this.operationsService.createRecordingEvent({
         site_uid: validation.camera.site_uid,
         camera_uid: validation.camera.uid,
-        activity_uid: payload.activity_uid,
         activity_type: payload.activity_type,
         event_start: payload.event_start,
         event_end: payload.event_end,
@@ -180,6 +196,14 @@ export class EdgeGateway implements OnGatewayConnection, OnGatewayDisconnect {
         status: 'error',
         edge_id: validation.edgeId,
         reason: validation.reason,
+      };
+    }
+
+    if (!validation.camera.alert) {
+      return {
+        status: 'error',
+        edge_id: payload.edge_id,
+        reason: 'Violation detection not enabled for this camera',
       };
     }
 

@@ -5,6 +5,7 @@ import {
   IsString,
   IsUUID,
   IsObject,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -93,4 +94,22 @@ export class CreateCameraDto {
   @IsString()
   @IsOptional()
   status?: string;
+
+  @ApiProperty({
+    example: 'memasak',
+    description: 'Activity label for edge worker recording',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  activity?: string;
+
+  @ApiProperty({
+    example: false,
+    description: 'Enable violation detection (best.pt) on edge worker',
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  alert?: boolean;
 }

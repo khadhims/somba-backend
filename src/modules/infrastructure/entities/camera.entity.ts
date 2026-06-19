@@ -9,7 +9,6 @@ import {
 import { Site } from './site.entity';
 import { Event } from '../../operations/entities/event.entity';
 import { Alert } from '../../operations/entities/alert.entity';
-import { Activity } from './activity.entity';
 
 @Entity('cameras')
 export class Camera {
@@ -27,11 +26,10 @@ export class Camera {
   site: Site;
 
   @Column({ nullable: true })
-  activity_uid: string | null;
+  activity: string | null;
 
-  @ManyToOne(() => Activity, (activity) => activity.cameras, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'activity_uid' })
-  activity: Activity;
+  @Column({ default: false })
+  alert: boolean;
 
   @Column({ nullable: true })
   room: string;
