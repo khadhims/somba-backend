@@ -35,8 +35,8 @@ export class CreateEventDto {
   @IsOptional()
   event_end?: string;
 
-  @ApiProperty({ example: 2.25, required: false })
-  @IsNumber()
+  @ApiProperty({ example: 2.3, required: false })
+  @IsNumber({ maxDecimalPlaces: 1 })
   @IsOptional()
   duration_minutes?: number;
 
