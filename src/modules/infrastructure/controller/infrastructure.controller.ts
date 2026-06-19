@@ -7,16 +7,11 @@ import {
   UseGuards,
   Patch,
   Delete,
-  Put,
   NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InfrastructureService } from '../services/infrastructure.service';
-import { ActivityService } from '../services/activity.service';
 import { AuthorizationService } from '../../users/services/authorization.service';
-import { CreateActivityDto } from '../dtos/create-activity.dto';
-import { UpdateActivityDto } from '../dtos/update-activity.dto';
-import { AssignCameraActivitiesDto } from '../dtos/assign-camera-activities.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorator/current-user.decorator';
 import { User } from '../../users/entities/user.entity';
@@ -32,7 +27,6 @@ import { UpdateCameraDto } from '../dtos/update-camera.dto';
 export class InfrastructureController {
   constructor(
     private infraService: InfrastructureService,
-    private activityService: ActivityService,
     private authorizationService: AuthorizationService,
   ) {}
 
@@ -167,88 +161,5 @@ export class InfrastructureController {
       status: 'success',
       message: `Started recording for camera ${uid}`,
     };
-  }
-
-  @Get('sites/:siteUid/activity-definitions')
-  @ApiOperation({ summary: 'List activity definitions by site' })
-  async findActivityDefinitionsBySite(
-    @Param('siteUid') siteUid: string,
-    @CurrentUser() user: User,
-  ) {
-    await this.authorizationService.assertCanReadSite(user.uid, siteUid);
-    return this.activityService.findBySite(siteUid);
-  }
-
-  @Post('sites/:siteUid/activity-definitions')
-  @ApiOperation({ summary: 'Create activity definition under site' })
-  async createActivityDefinition(
-    @Param('siteUid') siteUid: string,
-    @Body() data: CreateActivityDto,
-    @CurrentUser() user: User,
-  ) {
-    await this.authorizationService.assertCanWriteSite(user.uid, siteUid);
-    const activity = await this.activityService.create(siteUid, data);
-    this.infraService.notifySiteConfigUpdated(siteUid);
-    return activity;
-  }
-
-  @Patch('sites/:siteUid/activity-definitions/:activityUid')
-  @ApiOperation({ summary: 'Update activity definition' })
-  async updateActivityDefinition(
-    @Param('siteUid') siteUid: string,
-    @Param('activityUid') activityUid: string,
-    @Body() data: UpdateActivityDto,
-    @CurrentUser() user: User,
-  ) {
-    await this.authorizationService.assertCanWriteSite(user.uid, siteUid);
-    const activity = await this.activityService.update(
-      siteUid,
-      activityUid,
-      data,
-    );
-    this.infraService.notifySiteConfigUpdated(siteUid);
-    return activity;
-  }
-
-  @Delete('sites/:siteUid/activity-definitions/:activityUid')
-  @ApiOperation({ summary: 'Delete activity definition' })
-  async removeActivityDefinition(
-    @Param('siteUid') siteUid: string,
-    @Param('activityUid') activityUid: string,
-    @CurrentUser() user: User,
-  ) {
-    await this.authorizationService.assertCanWriteSite(user.uid, siteUid);
-    await this.activityService.remove(siteUid, activityUid);
-    this.infraService.notifySiteConfigUpdated(siteUid);
-    return { status: 'success' };
-  }
-
-  @Get('sites/:siteUid/cameras/:cameraUid/activity-definitions')
-  @ApiOperation({ summary: 'List activity definitions assigned to camera' })
-  async findCameraActivityDefinitions(
-    @Param('siteUid') siteUid: string,
-    @Param('cameraUid') cameraUid: string,
-    @CurrentUser() user: User,
-  ) {
-    await this.authorizationService.assertCanReadSite(user.uid, siteUid);
-    return this.activityService.listAssignmentsForCamera(siteUid, cameraUid);
-  }
-
-  @Put('sites/:siteUid/cameras/:cameraUid/activity-definitions')
-  @ApiOperation({ summary: 'Replace activity definitions assigned to camera' })
-  async assignCameraActivityDefinitions(
-    @Param('siteUid') siteUid: string,
-    @Param('cameraUid') cameraUid: string,
-    @Body() data: AssignCameraActivitiesDto,
-    @CurrentUser() user: User,
-  ) {
-    await this.authorizationService.assertCanWriteSite(user.uid, siteUid);
-    const activities = await this.activityService.assignActivitiesToCamera(
-      siteUid,
-      cameraUid,
-      data.activity_uids,
-    );
-    this.infraService.notifySiteConfigUpdated(siteUid);
-    return activities;
   }
 }

@@ -151,7 +151,7 @@ export class InfrastructureService {
   }
 
   private normalizeCameraPayload(data: CreateCameraDto | UpdateCameraDto) {
-    const { cam_type, type, ...rest } = data;
+    const { cam_type, type, activity, ...rest } = data;
     const { room_id: _legacyRoomId, ...cameraData } = rest as typeof rest & {
       room_id?: number;
     };
@@ -159,6 +159,9 @@ export class InfrastructureService {
     return {
       ...cameraData,
       type: type ?? cam_type,
+      ...(activity !== undefined
+        ? { activity: activity.trim().toLowerCase() || null }
+        : {}),
     };
   }
 
