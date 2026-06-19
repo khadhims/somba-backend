@@ -1,10 +1,32 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Event } from '../entities/event.entity';
 import { Alert } from '../entities/alert.entity';
 import { CreateEventDto } from '../dtos/create-event.dto';
 import { CreateAlertDto } from '../dtos/create-alert.dto';
+import { PaginatedQueryDto } from '../../../common/dtos/paginated-query.dto';
+import {
+  applyDateRange,
+  buildPaginatedResult,
+  PaginatedResult,
+  resolvePagination,
+} from '../../../common/utils/pagination.util';
+
+const EVENT_SORT_FIELDS: Record<string, string> = {
+  event_name: 'event.activity_type',
+  camera: 'camera.name',
+  timestamp: 'event.event_start',
+  duration: 'event.duration_minutes',
+  activity: 'event.activity_type',
+};
+
+const ALERT_SORT_FIELDS: Record<string, string> = {
+  alert_name: 'alert.violation_name',
+  timestamp: 'alert.detected_at',
+  detections: 'alert.total_detections',
+  status: 'alert.status',
+};
 
 @Injectable()
 export class OperationsService {
@@ -28,16 +50,56 @@ export class OperationsService {
     return this.eventRepository.save(event);
   }
 
-  async findEventsBySite(siteUid: string): Promise<Event[]> {
-    return this.eventRepository.find({
-      where: { site_uid: siteUid },
-      relations: { camera: true },
-      order: { event_start: 'DESC' },
-    });
+  async findActivitiesBySite(
+    siteUid: string,
+    query: PaginatedQueryDto = new PaginatedQueryDto(),
+  ): Promise<PaginatedResult<Event>> {
+    const { skip, perPage } = resolvePagination(query);
+    const params: Record<string, unknown> = { siteUid };
+    const qb = this.eventRepository
+      .createQueryBuilder('event')
+      .leftJoinAndSelect('event.camera', 'camera')
+      .where('event.site_uid = :siteUid', { siteUid });
+
+    if (query.camera_uuid) {
+      params.cameraUuid = query.camera_uuid;
+      qb.andWhere('event.camera_uid = :cameraUuid', {
+        cameraUuid: query.camera_uuid,
+      });
+    }
+
+    for (const clause of applyDateRange('event.event_start', query, params)) {
+      qb.andWhere(clause, params);
+    }
+
+    if (query.search?.trim()) {
+      const search = `%${query.search.trim()}%`;
+      qb.andWhere(
+        new Brackets((expr) => {
+          expr
+            .where('event.activity_type ILIKE :search', { search })
+            .orWhere('camera.name ILIKE :search', { search });
+        }),
+      );
+    }
+
+    const sortColumn =
+      EVENT_SORT_FIELDS[query.sort_by ?? 'timestamp'] ?? 'event.event_start';
+    const sortDirection = query.sort_order === 'asc' ? 'ASC' : 'DESC';
+    qb.orderBy(sortColumn, sortDirection).addOrderBy('event.event_id', 'DESC');
+
+    const totalItems = await qb.getCount();
+    const items = await qb.skip(skip).take(perPage).getMany();
+
+    return buildPaginatedResult(items, totalItems, query);
   }
 
-  async findActivitiesBySite(siteUid: string): Promise<Event[]> {
-    return this.findEventsBySite(siteUid);
+  async findEventsBySite(siteUid: string): Promise<Event[]> {
+    const result = await this.findActivitiesBySite(siteUid, {
+      page: 1,
+      page_size: 100,
+    });
+    return result.data;
   }
 
   async findLiveActivitiesBySite(siteUid: string) {
@@ -64,16 +126,58 @@ export class OperationsService {
     return this.alertRepository.save(alert);
   }
 
-  async findAlertsBySite(siteUid: string): Promise<Alert[]> {
-    return this.alertRepository.find({
-      where: { camera: { site_uid: siteUid } },
-      relations: { recording_event: true, camera: true },
-      order: { detected_at: 'DESC' },
-    });
+  async findAlertsBySite(
+    siteUid: string,
+    query: PaginatedQueryDto = new PaginatedQueryDto(),
+  ): Promise<PaginatedResult<Alert>> {
+    const { skip, perPage } = resolvePagination(query);
+    const params: Record<string, unknown> = { siteUid };
+    const qb = this.alertRepository
+      .createQueryBuilder('alert')
+      .leftJoinAndSelect('alert.camera', 'camera')
+      .leftJoinAndSelect('alert.recording_event', 'recording_event')
+      .where('camera.site_uid = :siteUid', { siteUid });
+
+    if (query.camera_uuid) {
+      params.cameraUuid = query.camera_uuid;
+      qb.andWhere('alert.camera_uid = :cameraUuid', {
+        cameraUuid: query.camera_uuid,
+      });
+    }
+
+    for (const clause of applyDateRange('alert.detected_at', query, params)) {
+      qb.andWhere(clause, params);
+    }
+
+    if (query.search?.trim()) {
+      const search = `%${query.search.trim()}%`;
+      qb.andWhere(
+        new Brackets((expr) => {
+          expr
+            .where('alert.violation_name ILIKE :search', { search })
+            .orWhere('camera.name ILIKE :search', { search });
+        }),
+      );
+    }
+
+    const sortColumn =
+      ALERT_SORT_FIELDS[query.sort_by ?? 'timestamp'] ?? 'alert.detected_at';
+    const sortDirection = query.sort_order === 'asc' ? 'ASC' : 'DESC';
+    qb.orderBy(sortColumn, sortDirection).addOrderBy('alert.alert_id', 'DESC');
+
+    const totalItems = await qb.getCount();
+    const items = await qb.skip(skip).take(perPage).getMany();
+
+    return buildPaginatedResult(items, totalItems, query);
   }
 
   async findAlertsSummaryBySite(siteUid: string) {
-    const alerts = await this.findAlertsBySite(siteUid);
+    const alerts = await this.alertRepository
+      .createQueryBuilder('alert')
+      .leftJoin('alert.camera', 'camera')
+      .where('camera.site_uid = :siteUid', { siteUid })
+      .select(['alert.status'])
+      .getMany();
     const statusCounts = {
       not_resolved: 0,
       resolved: 0,

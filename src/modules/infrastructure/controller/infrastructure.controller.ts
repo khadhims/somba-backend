@@ -8,6 +8,7 @@ import {
   Patch,
   Delete,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InfrastructureService } from '../services/infrastructure.service';
@@ -19,6 +20,7 @@ import { CreateSiteDto } from '../dtos/create-site.dto';
 import { CreateCameraDto } from '../dtos/create-camera.dto';
 import { UpdateSiteDto } from '../dtos/update-site.dto';
 import { UpdateCameraDto } from '../dtos/update-camera.dto';
+import { PaginatedQueryDto } from '../../../common/dtos/paginated-query.dto';
 
 @ApiTags('infrastructure')
 @ApiBearerAuth()
@@ -100,8 +102,9 @@ export class InfrastructureController {
   findCamerasBySite(
     @Param('siteUid') siteUid: string,
     @CurrentUser() user: User,
+    @Query() query: PaginatedQueryDto,
   ) {
-    return this.infraService.findCamerasBySite(siteUid, user.uid);
+    return this.infraService.findCamerasBySite(siteUid, user.uid, query);
   }
 
   @Get('sites/:siteUid/cameras/:cameraUid')
