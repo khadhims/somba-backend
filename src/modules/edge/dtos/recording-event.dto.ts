@@ -26,7 +26,7 @@ export class RecordingEventDto {
   @IsNotEmpty()
   event_end: string;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 1 })
   duration_minutes: number;
 
   @IsString()

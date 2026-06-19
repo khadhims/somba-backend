@@ -36,7 +36,7 @@ export class Event {
   @Column({ nullable: true })
   event_end: Date;
 
-  @Column({ nullable: true })
+  @Column({ type: 'float', nullable: true })
   duration_minutes: number;
 
   @Column({ nullable: true })
