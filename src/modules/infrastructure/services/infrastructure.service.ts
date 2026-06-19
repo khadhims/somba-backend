@@ -160,7 +160,7 @@ export class InfrastructureService {
       ...cameraData,
       type: type ?? cam_type,
       ...(activity !== undefined
-        ? { activity: activity.trim().toLowerCase() || null }
+        ? { activity: activity.trim().toLowerCase() }
         : {}),
     };
   }

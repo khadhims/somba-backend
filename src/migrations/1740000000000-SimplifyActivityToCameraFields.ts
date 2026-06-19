@@ -21,6 +21,16 @@ export class SimplifyActivityToCameraFields1740000000000
     `);
 
     await queryRunner.query(`
+      UPDATE "cameras"
+      SET "activity" = 'activity'
+      WHERE "activity" IS NULL OR trim("activity") = ''
+    `);
+
+    await queryRunner.query(`
+      ALTER TABLE "cameras" ALTER COLUMN "activity" SET NOT NULL
+    `);
+
+    await queryRunner.query(`
       ALTER TABLE "cameras" DROP CONSTRAINT IF EXISTS "FK_cameras_activity_uid"
     `);
     await queryRunner.query(`

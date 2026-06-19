@@ -25,8 +25,8 @@ export class Camera {
   @JoinColumn({ name: 'site_uid' })
   site: Site;
 
-  @Column({ nullable: true })
-  activity: string | null;
+  @Column({ type: 'varchar' })
+  activity: string;
 
   @Column({ default: false })
   alert: boolean;

@@ -88,9 +88,7 @@ export class EdgeService {
       order: { name: 'ASC' },
     });
 
-    return cameras
-      .filter((camera) => camera.activity?.trim())
-      .map((camera) => ({
+    return cameras.map((camera) => ({
         camera_uuid: camera.uid,
         name: camera.name,
         rtsp_url: camera.rtsp_url,
