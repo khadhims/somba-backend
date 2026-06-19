@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { In, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 import { Site } from '../entities/site.entity';
 import { Camera } from '../entities/camera.entity';
 import { CreateSiteDto } from '../dtos/create-site.dto';
@@ -12,6 +12,21 @@ import { UpdateCameraDto } from '../dtos/update-camera.dto';
 import { hashApiKey } from '../../../common/utils/api-key.util';
 import { SiteWithOneTimeApiKey } from '../entities/site.entity';
 import { AuthorizationService } from '../../users/services/authorization.service';
+import { PaginatedQueryDto } from '../../../common/dtos/paginated-query.dto';
+import {
+  buildPaginatedResult,
+  PaginatedResult,
+  resolvePagination,
+} from '../../../common/utils/pagination.util';
+
+const CAMERA_SORT_FIELDS: Record<string, string> = {
+  name: 'camera.name',
+  location: 'camera.room',
+  rtspUrl: 'camera.rtsp_url',
+  activity: 'camera.activity',
+  alert: 'camera.alert',
+  status: 'camera.status',
+};
 
 const SITE_CREATOR_RELATIONS = { creator: true } as const;
 
@@ -178,11 +193,43 @@ export class InfrastructureService {
     return saved;
   }
 
-  async findCamerasBySite(siteUid: string, userUid: string): Promise<Camera[]> {
+  async findCamerasBySite(
+    siteUid: string,
+    userUid: string,
+    query: PaginatedQueryDto = new PaginatedQueryDto(),
+  ): Promise<PaginatedResult<Camera>> {
     await this.authorizationService.assertCanReadSite(userUid, siteUid);
-    return this.cameraRepository.find({
-      where: { site_uid: siteUid },
-    });
+
+    const { skip, perPage } = resolvePagination(query);
+    const qb = this.cameraRepository
+      .createQueryBuilder('camera')
+      .where('camera.site_uid = :siteUid', { siteUid });
+
+    if (query.search?.trim()) {
+      const search = `%${query.search.trim()}%`;
+      qb.andWhere(
+        new Brackets((expr) => {
+          expr
+            .where('camera.name ILIKE :search', { search })
+            .orWhere('camera.brand ILIKE :search', { search })
+            .orWhere('camera.room ILIKE :search', { search })
+            .orWhere('camera.location ILIKE :search', { search })
+            .orWhere('camera.rtsp_url ILIKE :search', { search })
+            .orWhere('camera.stream_url ILIKE :search', { search })
+            .orWhere('camera.activity ILIKE :search', { search });
+        }),
+      );
+    }
+
+    const sortColumn =
+      CAMERA_SORT_FIELDS[query.sort_by ?? 'name'] ?? 'camera.name';
+    const sortDirection = query.sort_order === 'desc' ? 'DESC' : 'ASC';
+    qb.orderBy(sortColumn, sortDirection).addOrderBy('camera.uid', 'ASC');
+
+    const totalItems = await qb.getCount();
+    const items = await qb.skip(skip).take(perPage).getMany();
+
+    return buildPaginatedResult(items, totalItems, query);
   }
 
   async findCameraByUid(

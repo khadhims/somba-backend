@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   Patch,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OperationsService } from '../services/operations.service';
@@ -13,6 +14,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CreateEventDto } from '../dtos/create-event.dto';
 import { CreateAlertDto } from '../dtos/create-alert.dto';
 import { UpdateAlertDto } from '../dtos/update-alert.dto';
+import { PaginatedQueryDto } from '../../../common/dtos/paginated-query.dto';
 
 @ApiTags('operations')
 @ApiBearerAuth()
@@ -29,14 +31,20 @@ export class OperationsController {
 
   @Get('sites/:siteUid/events')
   @ApiOperation({ summary: 'List events by site' })
-  findEventsBySite(@Param('siteUid') siteUid: string) {
-    return this.operationsService.findEventsBySite(siteUid);
+  findEventsBySite(
+    @Param('siteUid') siteUid: string,
+    @Query() query: PaginatedQueryDto,
+  ) {
+    return this.operationsService.findActivitiesBySite(siteUid, query);
   }
 
   @Get('sites/:siteUid/activities')
   @ApiOperation({ summary: 'List activities by site' })
-  findActivitiesBySite(@Param('siteUid') siteUid: string) {
-    return this.operationsService.findActivitiesBySite(siteUid);
+  findActivitiesBySite(
+    @Param('siteUid') siteUid: string,
+    @Query() query: PaginatedQueryDto,
+  ) {
+    return this.operationsService.findActivitiesBySite(siteUid, query);
   }
 
   @Get('sites/:siteUid/live-activities')
@@ -53,8 +61,11 @@ export class OperationsController {
 
   @Get('sites/:siteUid/alerts')
   @ApiOperation({ summary: 'List alerts by site' })
-  findAlertsBySite(@Param('siteUid') siteUid: string) {
-    return this.operationsService.findAlertsBySite(siteUid);
+  findAlertsBySite(
+    @Param('siteUid') siteUid: string,
+    @Query() query: PaginatedQueryDto,
+  ) {
+    return this.operationsService.findAlertsBySite(siteUid, query);
   }
 
   @Get('sites/:siteUid/alerts-summary')
