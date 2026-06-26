@@ -53,4 +53,14 @@ export class CreateAlertDto {
   @IsArray()
   @IsOptional()
   bbox?: number[];
+
+  @ApiProperty({ example: '2026-06-09T10:00:00Z', required: false })
+  @IsDateString()
+  @IsOptional()
+  event_start?: string;
+
+  @ApiProperty({ example: '2026-06-09T10:00:05Z', required: false })
+  @IsDateString()
+  @IsOptional()
+  event_end?: string;
 }

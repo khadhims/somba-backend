@@ -36,4 +36,16 @@ export class DetectionEventDto {
   @IsString()
   @IsOptional()
   event_code?: string;
+
+  @IsString()
+  @IsOptional()
+  event_start?: string;
+
+  @IsString()
+  @IsOptional()
+  event_end?: string;
+
+  @IsNumber()
+  @IsOptional()
+  total_detections?: number;
 }

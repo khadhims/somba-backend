@@ -25,6 +25,7 @@ const EVENT_SORT_FIELDS: Record<string, string> = {
 const ALERT_SORT_FIELDS: Record<string, string> = {
   alert_name: 'alert.violation_name',
   timestamp: 'alert.detected_at',
+  duration: 'alert.duration_minutes',
   detections: 'alert.total_detections',
   status: 'alert.status',
 };
@@ -142,9 +143,21 @@ export class OperationsService {
   }
 
   async createAlert(data: CreateAlertDto): Promise<Alert> {
+    const eventStart = data.event_start
+      ? new Date(data.event_start)
+      : undefined;
+    const eventEnd = data.event_end ? new Date(data.event_end) : undefined;
+    const durationMinutes =
+      eventStart && eventEnd
+        ? Math.max(0, (eventEnd.getTime() - eventStart.getTime()) / 60000)
+        : undefined;
+
     const alert = this.alertRepository.create({
       ...data,
       detected_at: new Date(data.detected_at),
+      event_start: eventStart,
+      event_end: eventEnd,
+      duration_minutes: durationMinutes,
       image_url: data.image_url
         ? (this.mediaUrlService.normalize(data.image_url) ?? data.image_url)
         : data.image_url,
