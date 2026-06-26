@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
 import { OperationsModule } from './modules/operations/operations.module';
 import { EdgeModule } from './modules/edge/edge.module';
+import { MediaModule } from './common/modules/media.module';
 
 @Module({
   imports: [
@@ -37,6 +38,12 @@ import { EdgeModule } from './modules/edge/edge.module';
         EDGE_API_KEY: Joi.string().optional(),
         CORS_ORIGINS: Joi.string().default('http://localhost:5173'),
         SWAGGER_ENABLED: Joi.boolean().optional(),
+        S3_ENDPOINT: Joi.string().optional(),
+        S3_ACCESS_KEY: Joi.string().optional(),
+        S3_SECRET_KEY: Joi.string().optional(),
+        S3_REGION: Joi.string().optional(),
+        S3_BUCKET: Joi.string().optional(),
+        APP_URL: Joi.string().optional(),
       }),
     }),
     TypeOrmModule.forRootAsync({
@@ -69,6 +76,7 @@ import { EdgeModule } from './modules/edge/edge.module';
     InfrastructureModule,
     OperationsModule,
     EdgeModule, // after OperationsModule to satisfy module dependency order
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

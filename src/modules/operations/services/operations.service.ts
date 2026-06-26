@@ -5,13 +5,14 @@ import { Event } from '../entities/event.entity';
 import { Alert } from '../entities/alert.entity';
 import { CreateEventDto } from '../dtos/create-event.dto';
 import { CreateAlertDto } from '../dtos/create-alert.dto';
-import { PaginatedQueryDto } from '../../../common/dtos/paginated-query.dto';
+import { QueryPageSearchDto } from '../../../common/queryPaginateSearch.dto';
 import {
   applyDateRange,
   buildPaginatedResult,
   PaginatedResult,
   resolvePagination,
 } from '../../../common/utils/pagination.util';
+import { MediaUrlService } from '../../../common/services/media-url.service';
 
 const EVENT_SORT_FIELDS: Record<string, string> = {
   event_name: 'event.activity_type',
@@ -35,24 +36,48 @@ export class OperationsService {
     private eventRepository: Repository<Event>,
     @InjectRepository(Alert)
     private alertRepository: Repository<Alert>,
+    private mediaUrlService: MediaUrlService,
   ) {}
+
+  private applyEventMediaUrls(event: Event): Event {
+    if (event.recording_url) {
+      event.recording_url =
+        this.mediaUrlService.toProxyUrl(event.recording_url) ??
+        event.recording_url;
+    }
+    return event;
+  }
+
+  private applyAlertMediaUrls(alert: Alert): Alert {
+    if (alert.image_url) {
+      alert.image_url =
+        this.mediaUrlService.toProxyUrl(alert.image_url) ?? alert.image_url;
+    }
+    if (alert.recording_event) {
+      this.applyEventMediaUrls(alert.recording_event);
+    }
+    return alert;
+  }
 
   async createRecordingEvent(data: CreateEventDto): Promise<Event> {
     const event = this.eventRepository.create({
       site_uid: data.site_uid,
       camera_uid: data.camera_uid,
       activity_type: data.activity_type ?? 'activity',
-      event_start: new Date(data.event_start),
       event_end: data.event_end ? new Date(data.event_end) : undefined,
+      event_start: new Date(data.event_start),
       duration_minutes: data.duration_minutes,
-      recording_url: data.recording_url,
+      recording_url: data.recording_url
+        ? (this.mediaUrlService.normalize(data.recording_url) ??
+          data.recording_url)
+        : data.recording_url,
     });
     return this.eventRepository.save(event);
   }
 
   async findActivitiesBySite(
     siteUid: string,
-    query: PaginatedQueryDto = new PaginatedQueryDto(),
+    query: QueryPageSearchDto = new QueryPageSearchDto(),
   ): Promise<PaginatedResult<Event>> {
     const { skip, perPage } = resolvePagination(query);
     const params: Record<string, unknown> = { siteUid };
@@ -89,38 +114,43 @@ export class OperationsService {
     qb.orderBy(sortColumn, sortDirection).addOrderBy('event.event_id', 'DESC');
 
     const totalItems = await qb.getCount();
-    const items = await qb.skip(skip).take(perPage).getMany();
+    const items = (await qb.skip(skip).take(perPage).getMany()).map((event) =>
+      this.applyEventMediaUrls(event),
+    );
 
     return buildPaginatedResult(items, totalItems, query);
   }
 
-  async findEventsBySite(siteUid: string): Promise<Event[]> {
-    const result = await this.findActivitiesBySite(siteUid, {
-      page: 1,
-      page_size: 100,
-    });
-    return result.data;
-  }
-
   async findLiveActivitiesBySite(siteUid: string) {
-    const events = await this.eventRepository.find({
-      where: { site_uid: siteUid },
-      order: { event_start: 'DESC' },
-      take: 20,
-    });
+    const events = await this.eventRepository
+      .createQueryBuilder('event')
+      .where('event.site_uid = :siteUid', { siteUid })
+      .distinctOn(['event.activity_type'])
+      .orderBy('event.activity_type', 'ASC')
+      .addOrderBy('event.event_start', 'DESC')
+      .getMany();
 
-    return events.map((event) => ({
-      activity_uid: event.event_id,
-      activity_name: event.activity_type,
-      last_activity_timestamp: event.event_start,
-      currently_active: !event.event_end,
-    }));
+    return events
+      .map((event) => ({
+        activity_uid: event.activity_type,
+        activity_name: event.activity_type,
+        last_activity_timestamp: event.event_start,
+        currently_active: event.event_end == null,
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.last_activity_timestamp).getTime() -
+          new Date(a.last_activity_timestamp).getTime(),
+      );
   }
 
   async createAlert(data: CreateAlertDto): Promise<Alert> {
     const alert = this.alertRepository.create({
       ...data,
       detected_at: new Date(data.detected_at),
+      image_url: data.image_url
+        ? (this.mediaUrlService.normalize(data.image_url) ?? data.image_url)
+        : data.image_url,
       severity: data.severity ?? 'high',
     });
     return this.alertRepository.save(alert);
@@ -128,7 +158,7 @@ export class OperationsService {
 
   async findAlertsBySite(
     siteUid: string,
-    query: PaginatedQueryDto = new PaginatedQueryDto(),
+    query: QueryPageSearchDto = new QueryPageSearchDto(),
   ): Promise<PaginatedResult<Alert>> {
     const { skip, perPage } = resolvePagination(query);
     const params: Record<string, unknown> = { siteUid };
@@ -166,7 +196,9 @@ export class OperationsService {
     qb.orderBy(sortColumn, sortDirection).addOrderBy('alert.alert_id', 'DESC');
 
     const totalItems = await qb.getCount();
-    const items = await qb.skip(skip).take(perPage).getMany();
+    const items = (await qb.skip(skip).take(perPage).getMany()).map((alert) =>
+      this.applyAlertMediaUrls(alert),
+    );
 
     return buildPaginatedResult(items, totalItems, query);
   }
@@ -216,14 +248,7 @@ export class OperationsService {
     if (comment !== undefined) {
       alert.comment = comment;
     }
-    return this.alertRepository.save(alert);
-  }
-
-  async updateAlertByEventId(
-    alertId: string,
-    status: string,
-    comment?: string,
-  ): Promise<Alert | null> {
-    return this.updateAlertById(alertId, status, comment);
+    const saved = await this.alertRepository.save(alert);
+    return this.applyAlertMediaUrls(saved);
   }
 }

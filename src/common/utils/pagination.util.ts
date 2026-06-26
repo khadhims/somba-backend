@@ -1,4 +1,4 @@
-import { PaginatedQueryDto } from '../dtos/paginated-query.dto';
+import { QueryPageSearchDto } from '../queryPaginateSearch.dto';
 
 export interface PaginationMeta {
   page: number;
@@ -14,7 +14,7 @@ export interface PaginatedResult<T> {
   pagination: PaginationMeta;
 }
 
-export function resolvePagination(query: PaginatedQueryDto) {
+export function resolvePagination(query: QueryPageSearchDto) {
   const page = query.page ?? 1;
   const perPage = query.page_size ?? 10;
   const skip = (page - 1) * perPage;
@@ -24,7 +24,7 @@ export function resolvePagination(query: PaginatedQueryDto) {
 export function buildPaginatedResult<T>(
   items: T[],
   totalItems: number,
-  query: PaginatedQueryDto,
+  query: QueryPageSearchDto,
 ): PaginatedResult<T> {
   const { page, perPage } = resolvePagination(query);
   const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
@@ -44,7 +44,7 @@ export function buildPaginatedResult<T>(
 
 export function applyDateRange(
   column: string,
-  query: PaginatedQueryDto,
+  query: QueryPageSearchDto,
   params: Record<string, unknown>,
 ): string[] {
   const clauses: string[] = [];

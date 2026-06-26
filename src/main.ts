@@ -9,6 +9,7 @@ import { GlobalResponseInterceptor } from './common/interceptors/global-response
 import * as express from 'express';
 import { join } from 'path';
 import * as fs from 'fs';
+import { registerMediaProxy } from './common/modules/media-proxy';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -48,6 +49,10 @@ async function bootstrap() {
 
   // Serve static files from uploads directory
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
+
+  // Media proxy — streams private S3 objects to the browser. Registered on the
+  // raw Express instance (see registerMediaProxy for the rationale).
+  registerMediaProxy(app);
 
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
   const swaggerEnabled =

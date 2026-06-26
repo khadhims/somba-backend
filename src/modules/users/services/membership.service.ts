@@ -129,7 +129,7 @@ export class MembershipService {
 
     if (
       data.role &&
-      !INVITABLE_MEMBERSHIP_ROLES.includes(data.role as MembershipRole)
+      !INVITABLE_MEMBERSHIP_ROLES.includes(data.role)
     ) {
       throw new BadRequestException(
         'Only ADMIN or VIEWER roles can be assigned to members',

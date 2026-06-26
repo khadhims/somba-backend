@@ -20,7 +20,7 @@ import { CreateSiteDto } from '../dtos/create-site.dto';
 import { CreateCameraDto } from '../dtos/create-camera.dto';
 import { UpdateSiteDto } from '../dtos/update-site.dto';
 import { UpdateCameraDto } from '../dtos/update-camera.dto';
-import { PaginatedQueryDto } from '../../../common/dtos/paginated-query.dto';
+import { QueryPageSearchDto } from '../../../common/queryPaginateSearch.dto';
 
 @ApiTags('infrastructure')
 @ApiBearerAuth()
@@ -102,7 +102,7 @@ export class InfrastructureController {
   findCamerasBySite(
     @Param('siteUid') siteUid: string,
     @CurrentUser() user: User,
-    @Query() query: PaginatedQueryDto,
+    @Query() query: QueryPageSearchDto,
   ) {
     return this.infraService.findCamerasBySite(siteUid, user.uid, query);
   }

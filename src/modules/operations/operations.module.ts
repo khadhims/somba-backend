@@ -5,6 +5,7 @@ import { Alert } from './entities/alert.entity';
 import { OperationsService } from './services/operations.service';
 import { OperationsController } from './controller/operations.controller';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
+import { MediaUrlService } from '../../common/services/media-url.service';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module';
     InfrastructureModule,
   ],
   exports: [TypeOrmModule, OperationsService],
-  providers: [OperationsService],
+  providers: [OperationsService, MediaUrlService],
   controllers: [OperationsController],
 })
 export class OperationsModule {}
