@@ -53,9 +53,6 @@ export class OperationsService {
       alert.image_url =
         this.mediaUrlService.toProxyUrl(alert.image_url) ?? alert.image_url;
     }
-    if (alert.recording_event) {
-      this.applyEventMediaUrls(alert.recording_event);
-    }
     return alert;
   }
 
@@ -165,7 +162,6 @@ export class OperationsService {
     const qb = this.alertRepository
       .createQueryBuilder('alert')
       .leftJoinAndSelect('alert.camera', 'camera')
-      .leftJoinAndSelect('alert.recording_event', 'recording_event')
       .where('camera.site_uid = :siteUid', { siteUid });
 
     if (query.camera_uuid) {

@@ -5,20 +5,12 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Event } from './event.entity';
 import { Camera } from '../../infrastructure/entities/camera.entity';
 
 @Entity('alerts')
 export class Alert {
   @PrimaryGeneratedColumn('uuid')
   alert_id: string;
-
-  @Column({ nullable: true })
-  recording_event_id: string;
-
-  @ManyToOne(() => Event, { nullable: true })
-  @JoinColumn({ name: 'recording_event_id' })
-  recording_event: Event;
 
   @Column()
   camera_uid: string;

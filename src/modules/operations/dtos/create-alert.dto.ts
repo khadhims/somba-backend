@@ -53,9 +53,4 @@ export class CreateAlertDto {
   @IsArray()
   @IsOptional()
   bbox?: number[];
-
-  @ApiProperty({ example: 'recording-event-uuid', required: false })
-  @IsUUID()
-  @IsOptional()
-  recording_event_id?: string;
 }

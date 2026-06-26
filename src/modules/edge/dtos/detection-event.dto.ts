@@ -36,8 +36,4 @@ export class DetectionEventDto {
   @IsString()
   @IsOptional()
   event_code?: string;
-
-  @IsUUID()
-  @IsOptional()
-  recording_event_id?: string;
 }
