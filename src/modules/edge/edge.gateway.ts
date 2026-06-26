@@ -211,9 +211,10 @@ export class EdgeGateway implements OnGatewayConnection, OnGatewayDisconnect {
         severity: payload.severity,
         detected_at: payload.detected_at,
         image_url: payload.image_url,
-        total_detections: 1,
+        total_detections: payload.total_detections ?? 1,
         bbox: payload.bbox,
-        recording_event_id: payload.recording_event_id,
+        event_start: payload.event_start,
+        event_end: payload.event_end,
       });
 
       return {

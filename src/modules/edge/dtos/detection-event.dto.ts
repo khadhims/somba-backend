@@ -37,7 +37,15 @@ export class DetectionEventDto {
   @IsOptional()
   event_code?: string;
 
-  @IsUUID()
+  @IsString()
   @IsOptional()
-  recording_event_id?: string;
+  event_start?: string;
+
+  @IsString()
+  @IsOptional()
+  event_end?: string;
+
+  @IsNumber()
+  @IsOptional()
+  total_detections?: number;
 }

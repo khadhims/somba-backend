@@ -14,7 +14,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CreateEventDto } from '../dtos/create-event.dto';
 import { CreateAlertDto } from '../dtos/create-alert.dto';
 import { UpdateAlertDto } from '../dtos/update-alert.dto';
-import { PaginatedQueryDto } from '../../../common/dtos/paginated-query.dto';
+import { QueryPageSearchDto } from '../../../common/queryPaginateSearch.dto';
 
 @ApiTags('operations')
 @ApiBearerAuth()
@@ -33,7 +33,7 @@ export class OperationsController {
   @ApiOperation({ summary: 'List events by site' })
   findEventsBySite(
     @Param('siteUid') siteUid: string,
-    @Query() query: PaginatedQueryDto,
+    @Query() query: QueryPageSearchDto,
   ) {
     return this.operationsService.findActivitiesBySite(siteUid, query);
   }
@@ -42,7 +42,7 @@ export class OperationsController {
   @ApiOperation({ summary: 'List activities by site' })
   findActivitiesBySite(
     @Param('siteUid') siteUid: string,
-    @Query() query: PaginatedQueryDto,
+    @Query() query: QueryPageSearchDto,
   ) {
     return this.operationsService.findActivitiesBySite(siteUid, query);
   }
@@ -63,7 +63,7 @@ export class OperationsController {
   @ApiOperation({ summary: 'List alerts by site' })
   findAlertsBySite(
     @Param('siteUid') siteUid: string,
-    @Query() query: PaginatedQueryDto,
+    @Query() query: QueryPageSearchDto,
   ) {
     return this.operationsService.findAlertsBySite(siteUid, query);
   }
@@ -80,7 +80,7 @@ export class OperationsController {
     @Param('alertId') alertId: string,
     @Body() body: UpdateAlertDto,
   ) {
-    return this.operationsService.updateAlertByEventId(
+    return this.operationsService.updateAlertById(
       alertId,
       body.status,
       body.comment,
@@ -93,7 +93,7 @@ export class OperationsController {
     @Param('alertId') alertId: string,
     @Body() body: UpdateAlertDto,
   ) {
-    return this.operationsService.updateAlertByEventId(
+    return this.operationsService.updateAlertById(
       alertId,
       body.status,
       body.comment,

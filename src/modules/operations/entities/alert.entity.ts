@@ -5,20 +5,12 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Event } from './event.entity';
 import { Camera } from '../../infrastructure/entities/camera.entity';
 
 @Entity('alerts')
 export class Alert {
   @PrimaryGeneratedColumn('uuid')
   alert_id: string;
-
-  @Column({ nullable: true })
-  recording_event_id: string;
-
-  @ManyToOne(() => Event, { nullable: true })
-  @JoinColumn({ name: 'recording_event_id' })
-  recording_event: Event;
 
   @Column()
   camera_uid: string;
@@ -50,4 +42,15 @@ export class Alert {
 
   @Column({ type: 'timestamptz' })
   detected_at: Date;
+
+  // Violation episode window (edge collapses a burst of detections into one
+  // alert): start/end of the episode and its duration.
+  @Column({ type: 'timestamptz', nullable: true })
+  event_start: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  event_end: Date;
+
+  @Column({ type: 'float', nullable: true })
+  duration_minutes: number;
 }

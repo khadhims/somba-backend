@@ -54,8 +54,13 @@ export class CreateAlertDto {
   @IsOptional()
   bbox?: number[];
 
-  @ApiProperty({ example: 'recording-event-uuid', required: false })
-  @IsUUID()
+  @ApiProperty({ example: '2026-06-09T10:00:00Z', required: false })
+  @IsDateString()
   @IsOptional()
-  recording_event_id?: string;
+  event_start?: string;
+
+  @ApiProperty({ example: '2026-06-09T10:00:05Z', required: false })
+  @IsDateString()
+  @IsOptional()
+  event_end?: string;
 }

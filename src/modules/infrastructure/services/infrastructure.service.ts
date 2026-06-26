@@ -12,7 +12,7 @@ import { UpdateCameraDto } from '../dtos/update-camera.dto';
 import { hashApiKey } from '../../../common/utils/api-key.util';
 import { SiteWithOneTimeApiKey } from '../entities/site.entity';
 import { AuthorizationService } from '../../users/services/authorization.service';
-import { PaginatedQueryDto } from '../../../common/dtos/paginated-query.dto';
+import { QueryPageSearchDto } from '../../../common/queryPaginateSearch.dto';
 import {
   buildPaginatedResult,
   PaginatedResult,
@@ -196,7 +196,7 @@ export class InfrastructureService {
   async findCamerasBySite(
     siteUid: string,
     userUid: string,
-    query: PaginatedQueryDto = new PaginatedQueryDto(),
+    query: QueryPageSearchDto = new QueryPageSearchDto(),
   ): Promise<PaginatedResult<Camera>> {
     await this.authorizationService.assertCanReadSite(userUid, siteUid);
 
