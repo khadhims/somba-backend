@@ -53,6 +53,14 @@ export class OperationsController {
     return this.operationsService.findLiveActivitiesBySite(siteUid);
   }
 
+  // Returns the full set of site activities (no DTO bound, so the redundant
+  // site_uid/from_date/to_date query params the dashboard sends are ignored).
+  @Get('sites/:siteUid/activities-summary')
+  @ApiOperation({ summary: 'Get activities summary by site' })
+  findActivitiesSummaryBySite(@Param('siteUid') siteUid: string) {
+    return this.operationsService.findActivitiesSummaryBySite(siteUid);
+  }
+
   @Post('alerts')
   @ApiOperation({ summary: 'Create alert' })
   createAlert(@Body() data: CreateAlertDto) {

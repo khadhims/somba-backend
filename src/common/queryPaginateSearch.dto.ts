@@ -8,6 +8,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { getLocalToday } from './utils/date.util';
 
 /**
  * Canonical query DTO for paginated, searchable, sortable list endpoints.
@@ -28,13 +29,16 @@ export class QueryPageSearchDto {
   @Max(100)
   page_size?: number = 10;
 
+  // Default to "today" (business timezone) when the client omits the range, so
+  // every list endpoint scopes to the current day by default. Evaluated per
+  // request because class-transformer runs this initializer on each instance.
   @IsOptional()
   @IsString()
-  from_date?: string;
+  from_date?: string = getLocalToday();
 
   @IsOptional()
   @IsString()
-  to_date?: string;
+  to_date?: string = getLocalToday();
 
   @IsOptional()
   @IsUUID()
