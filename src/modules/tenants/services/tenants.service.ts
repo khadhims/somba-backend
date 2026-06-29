@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 import { Organization } from '../entities/organization.entity';
 import { Account } from '../entities/account.entity';
 import { Team } from '../entities/team.entity';
+import { Camera } from '../../infrastructure/entities/camera.entity';
+import { Membership } from '../../users/entities/membership.entity';
 import { CreateOrganizationDto } from '../dtos/create-organization.dto';
 import { CreateAccountDto } from '../dtos/create-account.dto';
 import { CreateTeamDto } from '../dtos/create-team.dto';
@@ -32,6 +34,10 @@ export class TenantsService {
     private accountRepository: Repository<Account>,
     @InjectRepository(Team)
     private teamRepository: Repository<Team>,
+    @InjectRepository(Camera)
+    private cameraRepository: Repository<Camera>,
+    @InjectRepository(Membership)
+    private membershipRepository: Repository<Membership>,
     private authorizationService: AuthorizationService,
   ) {}
 
@@ -252,5 +258,79 @@ export class TenantsService {
     if (result.affected === 0) {
       throw new NotFoundException(`Team with UID ${uid} not found`);
     }
+  }
+
+  async getOrganizationsSummary(userUid: string): Promise<{
+    total_organizations: number;
+    total_teams: number;
+    total_users: number;
+    total_cameras: number;
+  }> {
+    const orgUids =
+      await this.authorizationService.getAccessibleOrganizationUids(userUid);
+
+    if (orgUids.length === 0) {
+      return {
+        total_organizations: 0,
+        total_teams: 0,
+        total_users: 0,
+        total_cameras: 0,
+      };
+    }
+
+    const accounts = await this.accountRepository.find({
+      where: { organization_uid: In(orgUids) },
+      select: { uid: true },
+    });
+    const accountUids = accounts.map((a) => a.uid);
+
+    const total_teams =
+      accountUids.length > 0
+        ? await this.teamRepository.count({
+            where: { account_uid: In(accountUids) },
+          })
+        : 0;
+
+    const teams =
+      accountUids.length > 0
+        ? await this.teamRepository.find({
+            where: { account_uid: In(accountUids) },
+            select: { uid: true },
+          })
+        : [];
+    const teamUids = teams.map((t) => t.uid);
+
+    const userQb = this.membershipRepository
+      .createQueryBuilder('m')
+      .select('COUNT(DISTINCT m.user_uid)', 'count')
+      .where(
+        new Brackets((qb) => {
+          qb.where('m.organization_uid IN (:...orgUids)', { orgUids });
+          if (accountUids.length > 0) {
+            qb.orWhere('m.account_uid IN (:...accountUids)', { accountUids });
+          }
+          if (teamUids.length > 0) {
+            qb.orWhere('m.team_uid IN (:...teamUids)', { teamUids });
+          }
+        }),
+      );
+    const userCountResult = await userQb.getRawOne<{ count: string }>();
+    const total_users = parseInt(userCountResult?.count ?? '0', 10);
+
+    const total_cameras =
+      teamUids.length > 0
+        ? await this.cameraRepository
+            .createQueryBuilder('c')
+            .innerJoin('c.site', 's')
+            .where('s.team_uid IN (:...teamUids)', { teamUids })
+            .getCount()
+        : 0;
+
+    return {
+      total_organizations: orgUids.length,
+      total_teams,
+      total_users,
+      total_cameras,
+    };
   }
 }

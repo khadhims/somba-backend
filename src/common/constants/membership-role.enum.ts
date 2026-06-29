@@ -17,3 +17,7 @@ export const INVITABLE_MEMBERSHIP_ROLES: MembershipRole[] = [
 export function isWritableRole(role: string): boolean {
   return WRITABLE_MEMBERSHIP_ROLES.includes(role as MembershipRole);
 }
+
+export function isOwnerRole(role: string): boolean {
+  return role === MembershipRole.OWNER;
+}

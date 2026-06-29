@@ -42,6 +42,12 @@ export class TenantsController {
     return this.tenantsService.findAllOrganizations(user.uid);
   }
 
+  @Get('organizations/summary')
+  @ApiOperation({ summary: 'Get summary counts for organizations accessible to current user' })
+  getOrganizationsSummary(@CurrentUser() user: User) {
+    return this.tenantsService.getOrganizationsSummary(user.uid);
+  }
+
   @Get('organizations/:uid')
   @ApiOperation({ summary: 'Get organization by UID' })
   findOrganization(@Param('uid') uid: string, @CurrentUser() user: User) {
