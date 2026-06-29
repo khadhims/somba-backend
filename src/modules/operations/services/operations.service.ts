@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { Event } from '../entities/event.entity';
 import { Alert } from '../entities/alert.entity';
+import { Camera } from '../../infrastructure/entities/camera.entity';
 import { CreateEventDto } from '../dtos/create-event.dto';
 import { CreateAlertDto } from '../dtos/create-alert.dto';
 import { QueryPageSearchDto } from '../../../common/queryPaginateSearch.dto';
@@ -140,6 +141,41 @@ export class OperationsService {
           new Date(b.last_activity_timestamp).getTime() -
           new Date(a.last_activity_timestamp).getTime(),
       );
+  }
+
+  // Returns the full set of distinct activities configured across the site's
+  // cameras (deduplicated — many cameras may share one activity), each with its
+  // all-time active window from matching events (null if it never fired).
+  async findActivitiesSummaryBySite(siteUid: string) {
+    const rows = await this.eventRepository.manager
+      .createQueryBuilder()
+      .select('camera.activity', 'activity_type')
+      .addSelect('MIN(event.event_start)', 'earliest_active')
+      .addSelect('MAX(event.event_start)', 'latest_active')
+      .from(Camera, 'camera')
+      .leftJoin(
+        Event,
+        'event',
+        'event.site_uid = camera.site_uid AND event.activity_type = camera.activity',
+      )
+      .where('camera.site_uid = :siteUid', { siteUid })
+      .andWhere("camera.activity IS NOT NULL AND camera.activity <> ''")
+      .groupBy('camera.activity')
+      .orderBy('MAX(event.event_start)', 'DESC', 'NULLS LAST')
+      .getRawMany<{
+        activity_type: string;
+        earliest_active: Date | null;
+        latest_active: Date | null;
+      }>();
+
+    return {
+      activities: rows.map((row) => ({
+        activity_uid: row.activity_type,
+        activity_name: row.activity_type,
+        earliest_active: row.earliest_active,
+        latest_active: row.latest_active,
+      })),
+    };
   }
 
   async createAlert(data: CreateAlertDto): Promise<Alert> {

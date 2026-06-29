@@ -1,4 +1,5 @@
 import { QueryPageSearchDto } from '../queryPaginateSearch.dto';
+import { LOCAL_TZ_OFFSET } from './date.util';
 
 export interface PaginationMeta {
   page: number;
@@ -42,6 +43,9 @@ export function buildPaginatedResult<T>(
   };
 }
 
+// from_date/to_date day boundaries are interpreted in the business timezone
+// (LOCAL_TZ_OFFSET): e.g. from_date=2026-06-26 → 2026-06-26T00:00:00+08:00
+// (= 2026-06-25T16:00Z), so a "26 Jun" filter matches events on 26 Jun local.
 export function applyDateRange(
   column: string,
   query: QueryPageSearchDto,
@@ -50,12 +54,12 @@ export function applyDateRange(
   const clauses: string[] = [];
 
   if (query.from_date) {
-    params.fromDate = `${query.from_date}T00:00:00.000Z`;
+    params.fromDate = `${query.from_date}T00:00:00.000${LOCAL_TZ_OFFSET}`;
     clauses.push(`${column} >= :fromDate`);
   }
 
   if (query.to_date) {
-    params.toDate = `${query.to_date}T23:59:59.999Z`;
+    params.toDate = `${query.to_date}T23:59:59.999${LOCAL_TZ_OFFSET}`;
     clauses.push(`${column} <= :toDate`);
   }
 
