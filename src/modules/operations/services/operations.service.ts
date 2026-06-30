@@ -47,6 +47,10 @@ export class OperationsService {
         this.mediaUrlService.toProxyUrl(event.recording_url) ??
         event.recording_url;
     }
+    if (event.image_url) {
+      event.image_url =
+        this.mediaUrlService.toProxyUrl(event.image_url) ?? event.image_url;
+    }
     return event;
   }
 
