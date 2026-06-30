@@ -11,6 +11,7 @@ import { Account } from '../../tenants/entities/account.entity';
 import { Team } from '../../tenants/entities/team.entity';
 import { Site } from '../../infrastructure/entities/site.entity';
 import {
+  isOwnerRole,
   isWritableRole,
   MembershipRole,
 } from '../../../common/constants/membership-role.enum';
@@ -49,6 +50,15 @@ export class AuthorizationService {
   ): boolean {
     return memberships.some(
       (membership) => predicate(membership) && isWritableRole(membership.role),
+    );
+  }
+
+  private hasOwnerMembership(
+    memberships: MembershipWithRole[],
+    predicate: (membership: MembershipWithRole) => boolean,
+  ): boolean {
+    return memberships.some(
+      (membership) => predicate(membership) && isOwnerRole(membership.role),
     );
   }
 
@@ -249,7 +259,7 @@ export class AuthorizationService {
     }
 
     const memberships = await this.getMemberships(userUid);
-    return this.hasWritableMembership(
+    return this.hasOwnerMembership(
       memberships,
       (membership) => membership.organization_uid === orgUid,
     );
@@ -285,7 +295,7 @@ export class AuthorizationService {
     }
 
     const memberships = await this.getMemberships(userUid);
-    return this.hasWritableMembership(
+    return this.hasOwnerMembership(
       memberships,
       (membership) => membership.account_uid === accountUid,
     );
@@ -320,7 +330,7 @@ export class AuthorizationService {
     }
 
     const memberships = await this.getMemberships(userUid);
-    return this.hasWritableMembership(
+    return this.hasOwnerMembership(
       memberships,
       (membership) => membership.team_uid === teamUid,
     );
@@ -355,6 +365,28 @@ export class AuthorizationService {
     }
     if (await this.canWriteTeam(userUid, site.team_uid)) {
       return true;
+    }
+
+    // ADMIN (and OWNER) membership at team/account/org level can manage sites
+    const memberships = await this.getMemberships(userUid);
+    if (this.hasWritableMembership(memberships, (m) => m.team_uid === site.team_uid)) {
+      return true;
+    }
+    const team = await this.teamRepository.findOne({
+      where: { uid: site.team_uid },
+      select: { account_uid: true },
+    });
+    if (team) {
+      if (this.hasWritableMembership(memberships, (m) => m.account_uid === team.account_uid)) {
+        return true;
+      }
+      const account = await this.accountRepository.findOne({
+        where: { uid: team.account_uid },
+        select: { organization_uid: true },
+      });
+      if (account && this.hasWritableMembership(memberships, (m) => m.organization_uid === account.organization_uid)) {
+        return true;
+      }
     }
 
     return false;
