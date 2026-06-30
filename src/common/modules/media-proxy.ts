@@ -10,10 +10,13 @@ import { S3_CLIENT } from './media.module';
  *
  * Deliberately wired with `app.use` (rather than a Nest controller/middleware)
  * so that:
- *   1. arbitrary multi-segment paths (e.g. /media/alerts/cam/file.jpg) match via
+ *   1. arbitrary multi-segment paths (e.g. /s3-media/alerts/cam/file.jpg) match via
  *      Express prefix mounting, sidestepping path-to-regexp wildcard limitations;
  *   2. the binary stream bypasses the global response interceptor and exception
  *      filter that wrap normal JSON responses.
+ *
+ * Uses /s3-media (not /media) to avoid conflicting with frontend static assets
+ * served from the public/media directory.
  *
  * Streams objects from the private bucket using the server-side credentialed
  * client, forwarding Range requests so the browser can seek video.
@@ -23,7 +26,7 @@ export function registerMediaProxy(app: INestApplication): void {
   const configService = app.get(ConfigService);
   const bucket = configService.get<string>('S3_BUCKET', 'somba');
 
-  app.use('/media', async (req: Request, res: Response) => {
+  app.use('/s3-media', async (req: Request, res: Response) => {
     const key = req.path.replace(/^\//, '');
     if (!key) {
       res.status(400).json({ message: 'Missing media key' });
