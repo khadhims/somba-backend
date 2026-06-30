@@ -24,7 +24,7 @@ export class MediaUrlService {
   }
 
   /**
-   * Rewrites a stored S3 URL into a backend proxy URL (`<APP_URL>/media/<key>`)
+   * Rewrites a stored S3 URL into a backend proxy URL (`<APP_URL>/s3-media/<key>`)
    * so the browser can fetch private objects without S3 credentials. Returns
    * the input unchanged if it isn't a recognised S3 URL for this bucket.
    */
@@ -42,6 +42,6 @@ export class MediaUrlService {
       )
       .replace(/\/$/, '');
 
-    return `${appUrl}/media/${key}`;
+    return `${appUrl}/s3-media/${key}`;
   }
 }
