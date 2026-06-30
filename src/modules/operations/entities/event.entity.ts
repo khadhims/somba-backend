@@ -41,4 +41,7 @@ export class Event {
 
   @Column({ nullable: true })
   recording_url: string;
+
+  @Column({ default: '' })
+  image_url: string;
 }

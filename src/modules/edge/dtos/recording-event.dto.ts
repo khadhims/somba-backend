@@ -32,4 +32,7 @@ export class RecordingEventDto {
   @IsString()
   @IsOptional()
   recording_url?: string;
+
+  @IsString()
+  image_url: string;
 }

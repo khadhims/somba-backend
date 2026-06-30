@@ -43,4 +43,8 @@ export class CreateEventDto {
   @IsString()
   @IsOptional()
   recording_url?: string;
+
+  @ApiProperty({ example: 'https://storage/snapshots/cam.jpg' })
+  @IsString()
+  image_url: string;
 }

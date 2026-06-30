@@ -70,6 +70,9 @@ export class OperationsService {
         ? (this.mediaUrlService.normalize(data.recording_url) ??
           data.recording_url)
         : data.recording_url,
+      image_url: data.image_url
+        ? (this.mediaUrlService.normalize(data.image_url) ?? data.image_url)
+        : data.image_url,
     });
     return this.eventRepository.save(event);
   }
